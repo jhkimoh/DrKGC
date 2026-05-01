@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from transformers import GenerationConfig
 
-__all__ = ["DrKGC"]
+__all__ = ["DrKGC", "DrKGC_extract"]
 
 
 class DrKGC(nn.Module):
@@ -60,3 +60,27 @@ class DrKGC(nn.Module):
             inputs_embeds=inputs_embeds,
             generation_config=generation_config,
         )    
+
+
+class DrKGC_extract(DrKGC):
+    def __init__(self, tokenizer, llm_model, graph_model, extract_model):
+        super().__init__(tokenizer, llm_model, graph_model)
+        self.extract_model = extract_model
+        self.extract_id = self.tokenizer.convert_tokens_to_ids('<|extract_kg|>') #int
+
+    def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail):
+        inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
+        outputs = self.llm_model(
+            inputs_embeds=inputs_embeds, 
+            attention_mask=attention_mask, 
+            labels=labels, 
+            output_hidden_states=True, 
+            return_dict=True
+            )
+        breakpoint()
+        last_hidden_state = outputs.hidden_states[-1]
+        extract_pos = torch.nonzero(input_ids==self.extract_id)
+        x = last_hidden_state[extract_pos[:,0], extract_pos[:,1]]
+        extract_loss = self.extract_model(x, query_ids, entity_ids, triple_ids, is_predicted_tail)
+        outputs.loss = outputs.loss + extract_loss
+        return outputs

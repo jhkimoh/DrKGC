@@ -17,7 +17,7 @@ class Arguments:
     target_max_len: int = field(default=64, metadata={"help": "Maximum target sequence length."},)
     
     checkpoint_dir: str = field(default=None, metadata={"help": "Checkpoint saveing directory"})
-
+    use_extract: bool = field(default=False, metadata={"help":"True for using extract model"})
 
 @dataclass
 class FinetuningArguments(Seq2SeqTrainingArguments):
@@ -43,6 +43,8 @@ class FinetuningArguments(Seq2SeqTrainingArguments):
     lora_dropout: float = field(default=0.1)
     remove_unused_columns: bool = field(default=False)
 
+    t: float = field(default=0.05)
+    finetune-t: bool = field(default=True)
 
 @dataclass
 class GenerationArguments:

@@ -1,0 +1,2 @@
+CUDA_VISIBLE_DEVICES=0 python infer.py --dataset_path "dataset/fb15k237" --kge_embedding_path "dataset/fb15k237/entity_embeddings.pt" --checkpoint_dir "results/fb15k237/llama3/checkpoint-final" --model_name_or_path "meta-llama/Meta-Llama-3-8B" --model_type llama --num_return_sequences 1
+CUDA_VISIBLE_DEVICES=0 python infer.py --dataset_path "dataset/wn18rr" --kge_embedding_path "dataset/wn18rr/entity_embeddings.pt" --checkpoint_dir "results/wn18rr/llama3/checkpoint-final" --model_name_or_path "meta-llama/Meta-Llama-3-8B" --model_type llama --num_return_sequences 1

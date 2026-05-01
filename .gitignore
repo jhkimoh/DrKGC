@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*$py.class
+dataset/
+data/
+results/
+images/
+*.whl
+*.tar.gz
+venv/
+.env/
+env/
+.vscode/
+.DS_Store
+.env

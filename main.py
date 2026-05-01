@@ -16,8 +16,18 @@ from peft.tuners.lora import LoraLayer
 from peft import LoraConfig, get_peft_model, PeftModelForCausalLM, prepare_model_for_kbit_training
 
 from arguments import Arguments, FinetuningArguments, GenerationArguments
-from data import make_data_module
-from model import GraphEnhancer, DrKGC
+from data import make_data_module, make_data_module_extract
+from model import GraphEnhancer, DrKGC, DrKGC_extract, KG_extract
+
+from huggingface_hub import login
+from dotenv import load_dotenv
+
+load_dotenv()
+login(token=os.environ.get("HUGGINGFACE_TOKEN"))
+DATASET_METADATA = {
+    "fb15k237": {"E_dim": 14541, "R_dim": 237},
+    "wn18rr": {"E_dim": 40943, "R_dim": 11},
+}
 
 def get_accelerate_model(args, config, pretrained_model_class):
     device_map = 'auto' if os.environ.get('LOCAL_RANK') is None else {'': int(os.environ.get('LOCAL_RANK', '0'))}
@@ -133,7 +143,7 @@ def train():
     (data_args, training_args, generation_args, _) = hfparser.parse_args_into_dataclasses(return_remaining_strings=True)
     training_args.generation_config = GenerationConfig(**vars(generation_args))
     args = argparse.Namespace(**vars(data_args), **vars(training_args))
-    
+
     os.makedirs(args.output_dir, exist_ok=True)
     
     print(f"Load LLM: {args.model_name_or_path}")
@@ -148,14 +158,25 @@ def train():
     elif args.model_type == "mistral":
         model = get_accelerate_model(args, model_config, AutoModelForCausalLM)
     model.config.use_cache = False
-
+    breakpoint()
     kge_embedding = torch.load(args.kge_embedding_path)
     kge_embedding_dim = kge_embedding.shape[1]
     llm_config = model.config
     embed_model = GraphEnhancer(kge_embedding, kge_embedding_dim, 4, 128, 1, 1024, llm_config.hidden_size, llm_config.hidden_act)
-    model = DrKGC(tokenizer, model, embed_model)
-
-    data_module = make_data_module(args, tokenizer)
+    if args.use_extract: #수정한 부분(토큰추가, extract_model-인코더,디코더, model-forward수정)
+        tokenizer.add_tokens(['<|extract_kg|>'])
+        model.resize_token_embeddings(len(tokenizer))
+        dataset_name = os.path.basename(args.dataset_path)
+        if dataset_name not in DATASET_METADATA:
+            raise ValueError(f"Unsupported dataset: {dataset_name}. Supported datasets: {list(DATASET_METADATA.keys())}")
+        E_dim = DATASET_METADATA[dataset_name]["E_dim"]
+        R_dim = DATASET_METADATA[dataset_name]["R_dim"]
+        extract_model = KG_extract(model.config.hidden_size, E_dim, R_dim, args.per_device_train_batch_size, args)
+        model = DrKGC_extract(tokenizer, model, embed_model, extract_model)
+        data_module = make_data_module_extract(args, tokenizer) 
+    else:
+        model = DrKGC(tokenizer, model, embed_model)
+        data_module = make_data_module(args, tokenizer)
     
     trainer = Seq2SeqTrainer(
         model=model, 
