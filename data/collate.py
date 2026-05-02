@@ -70,10 +70,6 @@ class QueryCollator_extract(QueryCollator):
         # 1. 부모(QueryCollator)의 초기화 코드를 그대로 실행해서 변수들을 세팅합니다.
         super().__init__(args=args, tokenizer=tokenizer, source_max_len=source_max_len, target_max_len=target_max_len)
         # 2. 부모한테 없는 SAE 전용 변수들만 추가로 세팅합니다.
-        #if 'wn' in args.dataset_path:
-        #    self.kg_E, self.kg_R = 40943, 11
-        #else:
-        #    self.kg_E, self.kg_R = 14541, 237
         self.extract_id = self.tokenizer.convert_tokens_to_ids('<|extract_kg|>') #int
 
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
@@ -100,7 +96,7 @@ class QueryCollator_extract(QueryCollator):
 
         source_input_ids = tokenized_sources_with_prompt['input_ids']
         target_input_ids = tokenized_targets['input_ids']
-        breakpoint()
+
         input_ids = []
         labels = []
         is_predicted_tail = []

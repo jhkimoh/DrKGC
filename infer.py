@@ -119,11 +119,14 @@ if __name__ == '__main__':
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=False)
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.add_tokens(['[QUERY]', '[ENTITY]', '[RELATION]'])
-    
+    if hasattr(args, 'use_extract') and args.use_extract: 
+        tokenizer.add_tokens(['<|extract_kg|>'])
 
     generation_config.bos_token_id = tokenizer.bos_token_id
     
     model = LlamaForCausalLM.from_pretrained(args.model_name_or_path, low_cpu_mem_usage=True, device_map='auto')
+    if hasattr(args, 'use_extract') and args.use_extract:
+        model.resize_token_embeddings(len(tokenizer))
     model = PeftModel.from_pretrained(model, args.checkpoint_dir)
 
     model = model.half()

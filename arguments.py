@@ -43,8 +43,14 @@ class FinetuningArguments(Seq2SeqTrainingArguments):
     lora_dropout: float = field(default=0.1)
     remove_unused_columns: bool = field(default=False)
 
-    t: float = field(default=0.05)
-    finetune-t: bool = field(default=True)
+    run_name: Optional[str] = field(
+        default="DrKGC-run",
+        metadata={"help": "WandB에 기록될 실험(Run)의 이름입니다."}
+    )
+    report_to: Optional[str] = field(
+        default="wandb",
+        metadata={"help": "로그를 어디에 기록할지 설정합니다."}
+    )
 
 @dataclass
 class GenerationArguments:

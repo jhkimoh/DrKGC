@@ -61,12 +61,11 @@ class DrKGC(nn.Module):
             generation_config=generation_config,
         )    
 
-
 class DrKGC_extract(DrKGC):
     def __init__(self, tokenizer, llm_model, graph_model, extract_model):
         super().__init__(tokenizer, llm_model, graph_model)
         self.extract_model = extract_model
-        self.extract_id = self.tokenizer.convert_tokens_to_ids('<|extract_kg|>') #int
+        self.extract_id = self.tokenizer.convert_tokens_to_ids(['<|extract_kg|>'])[0]
 
     def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail):
         inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
@@ -76,11 +75,17 @@ class DrKGC_extract(DrKGC):
             labels=labels, 
             output_hidden_states=True, 
             return_dict=True
-            )
-        breakpoint()
+        )
         last_hidden_state = outputs.hidden_states[-1]
-        extract_pos = torch.nonzero(input_ids==self.extract_id)
+        extract_pos = torch.nonzero(input_ids == self.extract_id, as_tuple=False)
+        if extract_pos.numel() == 0:
+            raise ValueError("No extract token '<|extract_kg|>' found in input_ids for DrKGC_extract.")
         x = last_hidden_state[extract_pos[:,0], extract_pos[:,1]]
         extract_loss = self.extract_model(x, query_ids, entity_ids, triple_ids, is_predicted_tail)
         outputs.loss = outputs.loss + extract_loss
         return outputs
+
+    def save_pretrained(self, save_dir):
+        super().save_pretrained(save_dir)
+        save_dir = Path(save_dir)
+        torch.save(self.extract_model.state_dict(), save_dir / "extract_model.bin")

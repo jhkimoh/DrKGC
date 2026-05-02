@@ -4,6 +4,8 @@ __pycache__/
 dataset/
 data/
 results/
+results_extract/
+wandb/
 images/
 *.whl
 *.tar.gz
