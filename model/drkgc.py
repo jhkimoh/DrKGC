@@ -62,10 +62,11 @@ class DrKGC(nn.Module):
         )    
 
 class DrKGC_extract(DrKGC):
-    def __init__(self, tokenizer, llm_model, graph_model, extract_model):
+    def __init__(self, tokenizer, llm_model, graph_model, extract_model, extract_loss_weight=0.1):
         super().__init__(tokenizer, llm_model, graph_model)
         self.extract_model = extract_model
         self.extract_id = self.tokenizer.convert_tokens_to_ids(['<|extract_kg|>'])[0]
+        self.extract_loss_weight = extract_loss_weight
 
     def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail):
         inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
@@ -82,7 +83,7 @@ class DrKGC_extract(DrKGC):
             raise ValueError("No extract token '<|extract_kg|>' found in input_ids for DrKGC_extract.")
         x = last_hidden_state[extract_pos[:,0], extract_pos[:,1]]
         extract_loss = self.extract_model(x, query_ids, entity_ids, triple_ids, is_predicted_tail)
-        outputs.loss = outputs.loss + extract_loss
+        outputs.loss = outputs.loss + extract_loss * self.extract_loss_weight
         return outputs
 
     def save_pretrained(self, save_dir):

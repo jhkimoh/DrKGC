@@ -187,7 +187,7 @@ def train():
             raise ValueError(f"Unsupported dataset: {dataset_name}. Supported datasets: {list(DATASET_METADATA.keys())}")
         E_dim = DATASET_METADATA[dataset_name]["E_dim"]
         R_dim = DATASET_METADATA[dataset_name]["R_dim"]
-        extract_model = KG_extract(model.config.hidden_size, E_dim, R_dim, args.per_device_train_batch_size)
+        extract_model = KG_extract(model.config.hidden_size, E_dim, R_dim, args.per_device_train_batch_size, args.extract_loss_weight)
         extract_model = extract_model.to(torch.bfloat16)
         model = DrKGC_extract(tokenizer, model, embed_model, extract_model)
         data_module = make_data_module_extract(args, tokenizer) 

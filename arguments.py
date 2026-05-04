@@ -18,6 +18,7 @@ class Arguments:
     
     checkpoint_dir: str = field(default=None, metadata={"help": "Checkpoint saveing directory"})
     use_extract: bool = field(default=False, metadata={"help":"True for using extract model"})
+    extract_loss_weight: float = field(default=0.1)
 
 @dataclass
 class FinetuningArguments(Seq2SeqTrainingArguments):

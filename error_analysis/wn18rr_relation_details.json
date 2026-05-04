@@ -1,0 +1,3421 @@
+{
+    "derivationally related form": {
+        "only_drkgc": [
+            {
+                "triple": "(wrestle, derivationally related form, ?)",
+                "drkgc_pred": "wrestling",
+                "extract_pred": "wrestler",
+                "target": "wrestling"
+            },
+            {
+                "triple": "(fling, derivationally related form, ?)",
+                "drkgc_pred": "fling",
+                "extract_pred": "toss",
+                "target": "fling"
+            },
+            {
+                "triple": "(scruple, derivationally related form, ?)",
+                "drkgc_pred": "scruple",
+                "extract_pred": "misgiving",
+                "target": "scruple"
+            },
+            {
+                "triple": "(dicker, derivationally related form, ?)",
+                "drkgc_pred": "dicker",
+                "extract_pred": "take",
+                "target": "dicker"
+            },
+            {
+                "triple": "(occlusive, derivationally related form, ?)",
+                "drkgc_pred": "occlusive",
+                "extract_pred": "stem",
+                "target": "occlusive"
+            },
+            {
+                "triple": "(invitee, derivationally related form, ?)",
+                "drkgc_pred": "pay for",
+                "extract_pred": "invite",
+                "target": "pay for"
+            },
+            {
+                "triple": "(symbolizing, derivationally related form, ?)",
+                "drkgc_pred": "symbolizing",
+                "extract_pred": "symbolization",
+                "target": "symbolizing"
+            },
+            {
+                "triple": "(love, derivationally related form, ?)",
+                "drkgc_pred": "love",
+                "extract_pred": "loved one",
+                "target": "love"
+            },
+            {
+                "triple": "(flap, derivationally related form, ?)",
+                "drkgc_pred": "flap",
+                "extract_pred": "flutter",
+                "target": "flap"
+            },
+            {
+                "triple": "(set, derivationally related form, ?)",
+                "drkgc_pred": "set",
+                "extract_pred": "graduate",
+                "target": "set"
+            },
+            {
+                "triple": "(wharf, derivationally related form, ?)",
+                "drkgc_pred": "slip",
+                "extract_pred": "docking facility",
+                "target": "slip"
+            },
+            {
+                "triple": "(illuminant, derivationally related form, ?)",
+                "drkgc_pred": "illuminant",
+                "extract_pred": "theater light",
+                "target": "illuminant"
+            },
+            {
+                "triple": "(try out, derivationally related form, ?)",
+                "drkgc_pred": "tryout",
+                "extract_pred": "testee",
+                "target": "tryout"
+            },
+            {
+                "triple": "(scruple, derivationally related form, ?)",
+                "drkgc_pred": "scruple",
+                "extract_pred": "waver",
+                "target": "scruple"
+            },
+            {
+                "triple": "(transplant, derivationally related form, ?)",
+                "drkgc_pred": "transplant",
+                "extract_pred": "transplanting",
+                "target": "transplant"
+            },
+            {
+                "triple": "(touch on, derivationally related form, ?)",
+                "drkgc_pred": "touch on",
+                "extract_pred": "restore",
+                "target": "touch on"
+            },
+            {
+                "triple": "(typify, derivationally related form, ?)",
+                "drkgc_pred": "symbol",
+                "extract_pred": "representation",
+                "target": "symbol"
+            },
+            {
+                "triple": "(split up, derivationally related form, ?)",
+                "drkgc_pred": "split up",
+                "extract_pred": "split",
+                "target": "split up"
+            },
+            {
+                "triple": "(observe, derivationally related form, ?)",
+                "drkgc_pred": "reflexion",
+                "extract_pred": "noticer",
+                "target": "reflexion"
+            },
+            {
+                "triple": "(sponsor, derivationally related form, ?)",
+                "drkgc_pred": "sponsor",
+                "extract_pred": "presentation",
+                "target": "sponsor"
+            },
+            {
+                "triple": "(fledge, derivationally related form, ?)",
+                "drkgc_pred": "fledge",
+                "extract_pred": "flight",
+                "target": "fledge"
+            },
+            {
+                "triple": "(patrioteer, derivationally related form, ?)",
+                "drkgc_pred": "ultranationalism",
+                "extract_pred": "patriotism",
+                "target": "ultranationalism"
+            },
+            {
+                "triple": "(excite, derivationally related form, ?)",
+                "drkgc_pred": "excite",
+                "extract_pred": "vitalize",
+                "target": "excite"
+            },
+            {
+                "triple": "(ask, derivationally related form, ?)",
+                "drkgc_pred": "ask",
+                "extract_pred": "question",
+                "target": "ask"
+            },
+            {
+                "triple": "(sculpture, derivationally related form, ?)",
+                "drkgc_pred": "sculpture",
+                "extract_pred": "statue",
+                "target": "sculpture"
+            },
+            {
+                "triple": "(transferrer, derivationally related form, ?)",
+                "drkgc_pred": "transplant",
+                "extract_pred": "transfer",
+                "target": "transplant"
+            },
+            {
+                "triple": "(name, derivationally related form, ?)",
+                "drkgc_pred": "identity",
+                "extract_pred": "namer",
+                "target": "identity"
+            },
+            {
+                "triple": "(train, derivationally related form, ?)",
+                "drkgc_pred": "curb",
+                "extract_pred": "training",
+                "target": "curb"
+            },
+            {
+                "triple": "(excite, derivationally related form, ?)",
+                "drkgc_pred": "excite",
+                "extract_pred": "stimulate",
+                "target": "excite"
+            },
+            {
+                "triple": "(scollop, derivationally related form, ?)",
+                "drkgc_pred": "scollop",
+                "extract_pred": "sea scallop",
+                "target": "scollop"
+            },
+            {
+                "triple": "(interior decoration, derivationally related form, ?)",
+                "drkgc_pred": "interior decoration",
+                "extract_pred": "ornateness",
+                "target": "interior decoration"
+            },
+            {
+                "triple": "(typify, derivationally related form, ?)",
+                "drkgc_pred": "symbolizer",
+                "extract_pred": "symbolization",
+                "target": "symbolizer"
+            },
+            {
+                "triple": "(spike, derivationally related form, ?)",
+                "drkgc_pred": "spike",
+                "extract_pred": "strengthen",
+                "target": "spike"
+            },
+            {
+                "triple": "(marksmanship, derivationally related form, ?)",
+                "drkgc_pred": "sharpshooter",
+                "extract_pred": "shot",
+                "target": "sharpshooter"
+            },
+            {
+                "triple": "(crush, derivationally related form, ?)",
+                "drkgc_pred": "crush",
+                "extract_pred": "mash",
+                "target": "crush"
+            },
+            {
+                "triple": "(dismay, derivationally related form, ?)",
+                "drkgc_pred": "dismay",
+                "extract_pred": "scare",
+                "target": "dismay"
+            },
+            {
+                "triple": "(moan, derivationally related form, ?)",
+                "drkgc_pred": "moan",
+                "extract_pred": "bleat",
+                "target": "moan"
+            },
+            {
+                "triple": "(remark, derivationally related form, ?)",
+                "drkgc_pred": "remark",
+                "extract_pred": "comment",
+                "target": "remark"
+            },
+            {
+                "triple": "(take down, derivationally related form, ?)",
+                "drkgc_pred": "lower berth",
+                "extract_pred": "lowering",
+                "target": "lower berth"
+            },
+            {
+                "triple": "(merchantman, derivationally related form, ?)",
+                "drkgc_pred": "merchantman",
+                "extract_pred": "shipment",
+                "target": "merchantman"
+            },
+            {
+                "triple": "(effloresce, derivationally related form, ?)",
+                "drkgc_pred": "effloresce",
+                "extract_pred": "crystallize",
+                "target": "effloresce"
+            },
+            {
+                "triple": "(sewer, derivationally related form, ?)",
+                "drkgc_pred": "sewer",
+                "extract_pred": "sewing stitch",
+                "target": "sewer"
+            },
+            {
+                "triple": "(sculpture, derivationally related form, ?)",
+                "drkgc_pred": "sculpture",
+                "extract_pred": "statue maker",
+                "target": "sculpture"
+            },
+            {
+                "triple": "(tabulate, derivationally related form, ?)",
+                "drkgc_pred": "tabulation",
+                "extract_pred": "tabulator",
+                "target": "tabulation"
+            },
+            {
+                "triple": "(open up, derivationally related form, ?)",
+                "drkgc_pred": "open up",
+                "extract_pred": "open",
+                "target": "open up"
+            },
+            {
+                "triple": "(ridge, derivationally related form, ?)",
+                "drkgc_pred": "ridge",
+                "extract_pred": "ridged",
+                "target": "ridge"
+            },
+            {
+                "triple": "(command, derivationally related form, ?)",
+                "drkgc_pred": "command",
+                "extract_pred": "naval commander",
+                "target": "command"
+            }
+        ],
+        "only_extract": [
+            {
+                "triple": "(scratch, derivationally related form, ?)",
+                "drkgc_pred": "skin sensation",
+                "extract_pred": "scabies",
+                "target": "scabies"
+            },
+            {
+                "triple": "(positivistic, derivationally related form, ?)",
+                "drkgc_pred": "rationalism",
+                "extract_pred": "positivistic",
+                "target": "positivistic"
+            },
+            {
+                "triple": "(bobbysocks, derivationally related form, ?)",
+                "drkgc_pred": "astragalar",
+                "extract_pred": "bobbysocks",
+                "target": "bobbysocks"
+            },
+            {
+                "triple": "(tyrannize, derivationally related form, ?)",
+                "drkgc_pred": "absolutistic",
+                "extract_pred": "tyrannize",
+                "target": "tyrannize"
+            },
+            {
+                "triple": "(lighting, derivationally related form, ?)",
+                "drkgc_pred": "firewood",
+                "extract_pred": "lighting",
+                "target": "lighting"
+            },
+            {
+                "triple": "(urinary, derivationally related form, ?)",
+                "drkgc_pred": "urination",
+                "extract_pred": "weewee",
+                "target": "weewee"
+            },
+            {
+                "triple": "(souse, derivationally related form, ?)",
+                "drkgc_pred": "drunk",
+                "extract_pred": "souse",
+                "target": "souse"
+            },
+            {
+                "triple": "(buy, derivationally related form, ?)",
+                "drkgc_pred": "take",
+                "extract_pred": "buy",
+                "target": "buy"
+            },
+            {
+                "triple": "(venturer, derivationally related form, ?)",
+                "drkgc_pred": "gamble",
+                "extract_pred": "venturer",
+                "target": "venturer"
+            },
+            {
+                "triple": "(vanish, derivationally related form, ?)",
+                "drkgc_pred": "pass off",
+                "extract_pred": "vanish",
+                "target": "vanish"
+            },
+            {
+                "triple": "(obstructionism, derivationally related form, ?)",
+                "drkgc_pred": "stymy",
+                "extract_pred": "thwarter",
+                "target": "thwarter"
+            },
+            {
+                "triple": "(violate, derivationally related form, ?)",
+                "drkgc_pred": "neglect",
+                "extract_pred": "violate",
+                "target": "violate"
+            },
+            {
+                "triple": "(stockist, derivationally related form, ?)",
+                "drkgc_pred": "stockpile",
+                "extract_pred": "stock",
+                "target": "stock"
+            },
+            {
+                "triple": "(unpleasant, derivationally related form, ?)",
+                "drkgc_pred": "nastiness",
+                "extract_pred": "unpleasantness",
+                "target": "unpleasantness"
+            },
+            {
+                "triple": "(sign, derivationally related form, ?)",
+                "drkgc_pred": "signaling",
+                "extract_pred": "sign",
+                "target": "sign"
+            },
+            {
+                "triple": "(adulthood, derivationally related form, ?)",
+                "drkgc_pred": "mature",
+                "extract_pred": "grownup",
+                "target": "grownup"
+            },
+            {
+                "triple": "(inebriation, derivationally related form, ?)",
+                "drkgc_pred": "drunk",
+                "extract_pred": "inebriation",
+                "target": "inebriation"
+            },
+            {
+                "triple": "(unintelligent, derivationally related form, ?)",
+                "drkgc_pred": "stupid person",
+                "extract_pred": "unintelligent",
+                "target": "unintelligent"
+            },
+            {
+                "triple": "(twist, derivationally related form, ?)",
+                "drkgc_pred": "whirl",
+                "extract_pred": "whirlpool",
+                "target": "whirlpool"
+            },
+            {
+                "triple": "(thunder, derivationally related form, ?)",
+                "drkgc_pred": "screamer",
+                "extract_pred": "yowl",
+                "target": "yowl"
+            },
+            {
+                "triple": "(kindle, derivationally related form, ?)",
+                "drkgc_pred": "firewood",
+                "extract_pred": "lighting",
+                "target": "lighting"
+            },
+            {
+                "triple": "(judge, derivationally related form, ?)",
+                "drkgc_pred": "judgment",
+                "extract_pred": "judge",
+                "target": "judge"
+            },
+            {
+                "triple": "(froth, derivationally related form, ?)",
+                "drkgc_pred": "froth",
+                "extract_pred": "suds",
+                "target": "suds"
+            },
+            {
+                "triple": "(signboard, derivationally related form, ?)",
+                "drkgc_pred": "signaling",
+                "extract_pred": "signboard",
+                "target": "signboard"
+            },
+            {
+                "triple": "(analyst, derivationally related form, ?)",
+                "drkgc_pred": "dissection",
+                "extract_pred": "analyst",
+                "target": "analyst"
+            },
+            {
+                "triple": "(break, derivationally related form, ?)",
+                "drkgc_pred": "ledgeman",
+                "extract_pred": "break",
+                "target": "break"
+            },
+            {
+                "triple": "(request, derivationally related form, ?)",
+                "drkgc_pred": "dictation",
+                "extract_pred": "request",
+                "target": "request"
+            },
+            {
+                "triple": "(snuffle, derivationally related form, ?)",
+                "drkgc_pred": "blubber out",
+                "extract_pred": "snuffle",
+                "target": "snuffle"
+            },
+            {
+                "triple": "(shrink, derivationally related form, ?)",
+                "drkgc_pred": "psychotherapist",
+                "extract_pred": "shrink",
+                "target": "shrink"
+            },
+            {
+                "triple": "(chromatic, derivationally related form, ?)",
+                "drkgc_pred": "colouration",
+                "extract_pred": "vividness",
+                "target": "vividness"
+            },
+            {
+                "triple": "(realm, derivationally related form, ?)",
+                "drkgc_pred": "rulership",
+                "extract_pred": "realm",
+                "target": "realm"
+            },
+            {
+                "triple": "(impersonate, derivationally related form, ?)",
+                "drkgc_pred": "pose",
+                "extract_pred": "impersonate",
+                "target": "impersonate"
+            },
+            {
+                "triple": "(impenitency, derivationally related form, ?)",
+                "drkgc_pred": "unregenerate",
+                "extract_pred": "unrepentant",
+                "target": "unrepentant"
+            },
+            {
+                "triple": "(crosshatch, derivationally related form, ?)",
+                "drkgc_pred": "lineation",
+                "extract_pred": "hatching",
+                "target": "hatching"
+            },
+            {
+                "triple": "(tyrannize, derivationally related form, ?)",
+                "drkgc_pred": "potentate",
+                "extract_pred": "tyrant",
+                "target": "tyrant"
+            },
+            {
+                "triple": "(investigation, derivationally related form, ?)",
+                "drkgc_pred": "research",
+                "extract_pred": "investigate",
+                "target": "investigate"
+            },
+            {
+                "triple": "(turn over, derivationally related form, ?)",
+                "drkgc_pred": "wrap",
+                "extract_pred": "turn over",
+                "target": "turn over"
+            },
+            {
+                "triple": "(frivolousness, derivationally related form, ?)",
+                "drkgc_pred": "tomfoolery",
+                "extract_pred": "frivolousness",
+                "target": "frivolousness"
+            },
+            {
+                "triple": "(saviour, derivationally related form, ?)",
+                "drkgc_pred": "incarnation",
+                "extract_pred": "saviour",
+                "target": "saviour"
+            },
+            {
+                "triple": "(pilot, derivationally related form, ?)",
+                "drkgc_pred": "flyer",
+                "extract_pred": "pilot",
+                "target": "pilot"
+            },
+            {
+                "triple": "(tergiversate, derivationally related form, ?)",
+                "drkgc_pred": "fib",
+                "extract_pred": "tergiversate",
+                "target": "tergiversate"
+            },
+            {
+                "triple": "(sterilize, derivationally related form, ?)",
+                "drkgc_pred": "sterilization",
+                "extract_pred": "sterilizer",
+                "target": "sterilizer"
+            },
+            {
+                "triple": "(require, derivationally related form, ?)",
+                "drkgc_pred": "dictate",
+                "extract_pred": "commandment",
+                "target": "commandment"
+            },
+            {
+                "triple": "(wiper blade, derivationally related form, ?)",
+                "drkgc_pred": "wipe off",
+                "extract_pred": "wipe",
+                "target": "wipe"
+            },
+            {
+                "triple": "(pleasure craft, derivationally related form, ?)",
+                "drkgc_pred": "yacht",
+                "extract_pred": "cruise",
+                "target": "cruise"
+            },
+            {
+                "triple": "(vindicate, derivationally related form, ?)",
+                "drkgc_pred": "exoneration",
+                "extract_pred": "vindication",
+                "target": "vindication"
+            },
+            {
+                "triple": "(capsulize, derivationally related form, ?)",
+                "drkgc_pred": "encapsulate",
+                "extract_pred": "capsulize",
+                "target": "capsulize"
+            },
+            {
+                "triple": "(retrogress, derivationally related form, ?)",
+                "drkgc_pred": "reversion",
+                "extract_pred": "recidivism",
+                "target": "recidivism"
+            },
+            {
+                "triple": "(ballot, derivationally related form, ?)",
+                "drkgc_pred": "poll",
+                "extract_pred": "voting",
+                "target": "voting"
+            },
+            {
+                "triple": "(lowering, derivationally related form, ?)",
+                "drkgc_pred": "take down",
+                "extract_pred": "turn down",
+                "target": "turn down"
+            },
+            {
+                "triple": "(planting, derivationally related form, ?)",
+                "drkgc_pred": "set",
+                "extract_pred": "plant",
+                "target": "plant"
+            },
+            {
+                "triple": "(name, derivationally related form, ?)",
+                "drkgc_pred": "refer",
+                "extract_pred": "name",
+                "target": "name"
+            },
+            {
+                "triple": "(poikilotherm, derivationally related form, ?)",
+                "drkgc_pred": "poikilotherm",
+                "extract_pred": "sardina",
+                "target": "sardina"
+            }
+        ]
+    },
+    "has part": {
+        "only_drkgc": [
+            {
+                "triple": "(spain, has part, ?)",
+                "drkgc_pred": "jerez de la frontera",
+                "extract_pred": "setubal",
+                "target": "jerez de la frontera"
+            },
+            {
+                "triple": "(cricket, has part, ?)",
+                "drkgc_pred": "cricket",
+                "extract_pred": "playing period",
+                "target": "cricket"
+            },
+            {
+                "triple": "(internal-combustion engine, has part, ?)",
+                "drkgc_pred": "internal-combustion engine",
+                "extract_pred": "motor vehicle",
+                "target": "internal-combustion engine"
+            },
+            {
+                "triple": "(edifice, has part, ?)",
+                "drkgc_pred": "window",
+                "extract_pred": "porch",
+                "target": "window"
+            },
+            {
+                "triple": "(honshu, has part, ?)",
+                "drkgc_pred": "toyota",
+                "extract_pred": "fukuoka",
+                "target": "toyota"
+            },
+            {
+                "triple": "(sweet elder, has part, ?)",
+                "drkgc_pred": "elderberry",
+                "extract_pred": "sweet elder",
+                "target": "elderberry"
+            },
+            {
+                "triple": "(gi tract, has part, ?)",
+                "drkgc_pred": "gi tract",
+                "extract_pred": "intestine",
+                "target": "gi tract"
+            },
+            {
+                "triple": "(united states department of defense, has part, ?)",
+                "drkgc_pred": "united states department of defense",
+                "extract_pred": "united states intelligence agency",
+                "target": "united states department of defense"
+            },
+            {
+                "triple": "(republic of chile, has part, ?)",
+                "drkgc_pred": "llullaillaco",
+                "extract_pred": "sete quedas",
+                "target": "llullaillaco"
+            },
+            {
+                "triple": "(republic of chile, has part, ?)",
+                "drkgc_pred": "republic of chile",
+                "extract_pred": "republic of ecuador",
+                "target": "republic of chile"
+            },
+            {
+                "triple": "(melon vine, has part, ?)",
+                "drkgc_pred": "melon",
+                "extract_pred": "sweet melon",
+                "target": "melon"
+            },
+            {
+                "triple": "(mahimahi, has part, ?)",
+                "drkgc_pred": "mahimahi",
+                "extract_pred": "kingfish",
+                "target": "mahimahi"
+            },
+            {
+                "triple": "(zion, has part, ?)",
+                "drkgc_pred": "zion",
+                "extract_pred": "yafo",
+                "target": "zion"
+            },
+            {
+                "triple": "(muslim calendar, has part, ?)",
+                "drkgc_pred": "dhu al-qadah",
+                "extract_pred": "ramadan",
+                "target": "dhu al-qadah"
+            },
+            {
+                "triple": "(watercraft, has part, ?)",
+                "drkgc_pred": "watercraft",
+                "extract_pred": "ship",
+                "target": "watercraft"
+            },
+            {
+                "triple": "(asia, has part, ?)",
+                "drkgc_pred": "asia",
+                "extract_pred": "gulf states",
+                "target": "asia"
+            },
+            {
+                "triple": "(usa, has part, ?)",
+                "drkgc_pred": "usa",
+                "extract_pred": "heart of dixie",
+                "target": "usa"
+            },
+            {
+                "triple": "(sorbus domestica, has part, ?)",
+                "drkgc_pred": "sorbus domestica",
+                "extract_pred": "sorb domestic",
+                "target": "sorbus domestica"
+            },
+            {
+                "triple": "(zettabyte, has part, ?)",
+                "drkgc_pred": "zettabyte",
+                "extract_pred": "petabyte",
+                "target": "zettabyte"
+            },
+            {
+                "triple": "(ecclesiastical calendar, has part, ?)",
+                "drkgc_pred": "shrovetide",
+                "extract_pred": "religious holiday",
+                "target": "shrovetide"
+            },
+            {
+                "triple": "(urban center, has part, ?)",
+                "drkgc_pred": "inner city",
+                "extract_pred": "seat",
+                "target": "inner city"
+            },
+            {
+                "triple": "(wheel, has part, ?)",
+                "drkgc_pred": "wheel",
+                "extract_pred": "motorcycle",
+                "target": "wheel"
+            },
+            {
+                "triple": "(germany, has part, ?)",
+                "drkgc_pred": "ruhr river",
+                "extract_pred": "city of bridges",
+                "target": "ruhr river"
+            },
+            {
+                "triple": "(united mexican states, has part, ?)",
+                "drkgc_pred": "tampico",
+                "extract_pred": "mexican",
+                "target": "tampico"
+            },
+            {
+                "triple": "(united mexican states, has part, ?)",
+                "drkgc_pred": "juarez",
+                "extract_pred": "mexican",
+                "target": "juarez"
+            },
+            {
+                "triple": "(south carolina, has part, ?)",
+                "drkgc_pred": "pee dee river",
+                "extract_pred": "peee dee river",
+                "target": "pee dee river"
+            },
+            {
+                "triple": "(germany, has part, ?)",
+                "drkgc_pred": "dusseldorf",
+                "extract_pred": "city of bridges",
+                "target": "dusseldorf"
+            },
+            {
+                "triple": "(hub of the universe, has part, ?)",
+                "drkgc_pred": "charlestown",
+                "extract_pred": "berkshires",
+                "target": "charlestown"
+            }
+        ],
+        "only_extract": [
+            {
+                "triple": "(photographic camera, has part, ?)",
+                "drkgc_pred": "photoflash",
+                "extract_pred": "viewfinder",
+                "target": "viewfinder"
+            },
+            {
+                "triple": "(america, has part, ?)",
+                "drkgc_pred": "guiana",
+                "extract_pred": "north america",
+                "target": "north america"
+            },
+            {
+                "triple": "(quaternary period, has part, ?)",
+                "drkgc_pred": "ice age",
+                "extract_pred": "recent epoch",
+                "target": "recent epoch"
+            },
+            {
+                "triple": "(space, has part, ?)",
+                "drkgc_pred": "world",
+                "extract_pred": "space",
+                "target": "space"
+            },
+            {
+                "triple": "(ecclesiastical calendar, has part, ?)",
+                "drkgc_pred": "lententide",
+                "extract_pred": "ecclesiastical calendar",
+                "target": "ecclesiastical calendar"
+            },
+            {
+                "triple": "(guided missile, has part, ?)",
+                "drkgc_pred": "missile",
+                "extract_pred": "guided missile",
+                "target": "guided missile"
+            },
+            {
+                "triple": "(musculature, has part, ?)",
+                "drkgc_pred": "articulatory system",
+                "extract_pred": "musculature",
+                "target": "musculature"
+            },
+            {
+                "triple": "(germany, has part, ?)",
+                "drkgc_pred": "brandenburg",
+                "extract_pred": "lower saxony",
+                "target": "lower saxony"
+            },
+            {
+                "triple": "(journeying, has part, ?)",
+                "drkgc_pred": "tour",
+                "extract_pred": "journeying",
+                "target": "journeying"
+            },
+            {
+                "triple": "(golf-club head, has part, ?)",
+                "drkgc_pred": "golf club",
+                "extract_pred": "golf-club head",
+                "target": "golf-club head"
+            },
+            {
+                "triple": "(watt second, has part, ?)",
+                "drkgc_pred": "watt",
+                "extract_pred": "erg",
+                "target": "erg"
+            },
+            {
+                "triple": "(mouth-to-mouth resuscitation, has part, ?)",
+                "drkgc_pred": "emergency procedure",
+                "extract_pred": "mouth-to-mouth resuscitation",
+                "target": "mouth-to-mouth resuscitation"
+            },
+            {
+                "triple": "(sorbus domestica, has part, ?)",
+                "drkgc_pred": "sorbus domestica",
+                "extract_pred": "sorb apple",
+                "target": "sorb apple"
+            },
+            {
+                "triple": "(sweet elder, has part, ?)",
+                "drkgc_pred": "elderberry bush",
+                "extract_pred": "sweet elder",
+                "target": "sweet elder"
+            },
+            {
+                "triple": "(autonomic nervous system, has part, ?)",
+                "drkgc_pred": "trigonum cerebrale",
+                "extract_pred": "sympathetic nervous system",
+                "target": "sympathetic nervous system"
+            },
+            {
+                "triple": "(knee joint, has part, ?)",
+                "drkgc_pred": "tibia",
+                "extract_pred": "musculus articularis genus",
+                "target": "musculus articularis genus"
+            },
+            {
+                "triple": "(lock, has part, ?)",
+                "drkgc_pred": "door",
+                "extract_pred": "lock",
+                "target": "lock"
+            },
+            {
+                "triple": "(epithelium, has part, ?)",
+                "drkgc_pred": "neuroepithelium",
+                "extract_pred": "epithelial cell",
+                "target": "epithelial cell"
+            }
+        ]
+    },
+    "hypernym": {
+        "only_drkgc": [
+            {
+                "triple": "(underbid, hypernym, ?)",
+                "drkgc_pred": "underbid",
+                "extract_pred": "overbid",
+                "target": "underbid"
+            },
+            {
+                "triple": "(typology, hypernym, ?)",
+                "drkgc_pred": "typology",
+                "extract_pred": "sorting",
+                "target": "typology"
+            },
+            {
+                "triple": "(settlement, hypernym, ?)",
+                "drkgc_pred": "geographical region",
+                "extract_pred": "urban area",
+                "target": "geographical region"
+            },
+            {
+                "triple": "(learned response, hypernym, ?)",
+                "drkgc_pred": "response",
+                "extract_pred": "conditioned response",
+                "target": "response"
+            },
+            {
+                "triple": "(berk, hypernym, ?)",
+                "drkgc_pred": "berk",
+                "extract_pred": "airhead",
+                "target": "berk"
+            },
+            {
+                "triple": "(slammer, hypernym, ?)",
+                "drkgc_pred": "correctional institution",
+                "extract_pred": "penal institution",
+                "target": "correctional institution"
+            },
+            {
+                "triple": "(turnverein, hypernym, ?)",
+                "drkgc_pred": "turnverein",
+                "extract_pred": "secret society",
+                "target": "turnverein"
+            },
+            {
+                "triple": "(gerea, hypernym, ?)",
+                "drkgc_pred": "gerea",
+                "extract_pred": "genus astronium",
+                "target": "gerea"
+            },
+            {
+                "triple": "(roman deity, hypernym, ?)",
+                "drkgc_pred": "roman deity",
+                "extract_pred": "bodhisattva",
+                "target": "roman deity"
+            },
+            {
+                "triple": "(potman, hypernym, ?)",
+                "drkgc_pred": "potman",
+                "extract_pred": "public relations person",
+                "target": "potman"
+            },
+            {
+                "triple": "(check, hypernym, ?)",
+                "drkgc_pred": "stop",
+                "extract_pred": "hold",
+                "target": "stop"
+            },
+            {
+                "triple": "(unsoundness, hypernym, ?)",
+                "drkgc_pred": "unsoundness",
+                "extract_pred": "absence",
+                "target": "unsoundness"
+            },
+            {
+                "triple": "(greengrocery, hypernym, ?)",
+                "drkgc_pred": "grocery",
+                "extract_pred": "market",
+                "target": "grocery"
+            },
+            {
+                "triple": "(judaism, hypernym, ?)",
+                "drkgc_pred": "judaism",
+                "extract_pred": "tritheism",
+                "target": "judaism"
+            },
+            {
+                "triple": "(evidence, hypernym, ?)",
+                "drkgc_pred": "indication",
+                "extract_pred": "information",
+                "target": "indication"
+            },
+            {
+                "triple": "(tie, hypernym, ?)",
+                "drkgc_pred": "tie",
+                "extract_pred": "stabilizer bar",
+                "target": "tie"
+            },
+            {
+                "triple": "(spit up, hypernym, ?)",
+                "drkgc_pred": "release",
+                "extract_pred": "pass",
+                "target": "release"
+            },
+            {
+                "triple": "(receive, hypernym, ?)",
+                "drkgc_pred": "undergo",
+                "extract_pred": "sustain",
+                "target": "undergo"
+            },
+            {
+                "triple": "(ordain, hypernym, ?)",
+                "drkgc_pred": "ordain",
+                "extract_pred": "pass",
+                "target": "ordain"
+            },
+            {
+                "triple": "(spangle, hypernym, ?)",
+                "drkgc_pred": "spangle",
+                "extract_pred": "shiny",
+                "target": "spangle"
+            },
+            {
+                "triple": "(genus gelsemium, hypernym, ?)",
+                "drkgc_pred": "magnoliopsid genus",
+                "extract_pred": "magnoliid dicot genus",
+                "target": "magnoliopsid genus"
+            },
+            {
+                "triple": "(aftereffect, hypernym, ?)",
+                "drkgc_pred": "aftereffect",
+                "extract_pred": "consequence",
+                "target": "aftereffect"
+            },
+            {
+                "triple": "(pomatomus saltatrix, hypernym, ?)",
+                "drkgc_pred": "percoidean",
+                "extract_pred": "sunfish",
+                "target": "percoidean"
+            },
+            {
+                "triple": "(king nut hickory, hypernym, ?)",
+                "drkgc_pred": "king nut hickory",
+                "extract_pred": "juglans nigra",
+                "target": "king nut hickory"
+            },
+            {
+                "triple": "(twitch, hypernym, ?)",
+                "drkgc_pred": "twitch",
+                "extract_pred": "plantar reflex",
+                "target": "twitch"
+            },
+            {
+                "triple": "(fallboard, hypernym, ?)",
+                "drkgc_pred": "fallboard",
+                "extract_pred": "air bag",
+                "target": "fallboard"
+            },
+            {
+                "triple": "(deck, hypernym, ?)",
+                "drkgc_pred": "deck",
+                "extract_pred": "illustration",
+                "target": "deck"
+            },
+            {
+                "triple": "(slug, hypernym, ?)",
+                "drkgc_pred": "slug",
+                "extract_pred": "arrowhead",
+                "target": "slug"
+            },
+            {
+                "triple": "(pudendum, hypernym, ?)",
+                "drkgc_pred": "privates",
+                "extract_pred": "sex organ",
+                "target": "privates"
+            },
+            {
+                "triple": "(sand viper, hypernym, ?)",
+                "drkgc_pred": "sand viper",
+                "extract_pred": "krait",
+                "target": "sand viper"
+            },
+            {
+                "triple": "(wall, hypernym, ?)",
+                "drkgc_pred": "wall",
+                "extract_pred": "state line",
+                "target": "wall"
+            },
+            {
+                "triple": "(society, hypernym, ?)",
+                "drkgc_pred": "association",
+                "extract_pred": "social group",
+                "target": "association"
+            },
+            {
+                "triple": "(distill, hypernym, ?)",
+                "drkgc_pred": "change",
+                "extract_pred": "separate",
+                "target": "change"
+            },
+            {
+                "triple": "(gum, hypernym, ?)",
+                "drkgc_pred": "gum",
+                "extract_pred": "spew out",
+                "target": "gum"
+            },
+            {
+                "triple": "(habit, hypernym, ?)",
+                "drkgc_pred": "habit",
+                "extract_pred": "formal",
+                "target": "habit"
+            },
+            {
+                "triple": "(dispatch, hypernym, ?)",
+                "drkgc_pred": "dispatch",
+                "extract_pred": "review",
+                "target": "dispatch"
+            },
+            {
+                "triple": "(break, hypernym, ?)",
+                "drkgc_pred": "break",
+                "extract_pred": "putting",
+                "target": "break"
+            },
+            {
+                "triple": "(lark, hypernym, ?)",
+                "drkgc_pred": "lark",
+                "extract_pred": "whistler",
+                "target": "lark"
+            },
+            {
+                "triple": "(eisegesis, hypernym, ?)",
+                "drkgc_pred": "eisegesis",
+                "extract_pred": "exposition",
+                "target": "eisegesis"
+            },
+            {
+                "triple": "(vanish, hypernym, ?)",
+                "drkgc_pred": "terminate",
+                "extract_pred": "disappear",
+                "target": "terminate"
+            },
+            {
+                "triple": "(plan, hypernym, ?)",
+                "drkgc_pred": "create mentally",
+                "extract_pred": "design",
+                "target": "create mentally"
+            },
+            {
+                "triple": "(hold, hypernym, ?)",
+                "drkgc_pred": "hold",
+                "extract_pred": "confinement",
+                "target": "hold"
+            },
+            {
+                "triple": "(tyrannus tyrannus, hypernym, ?)",
+                "drkgc_pred": "tyrannus tyrannus",
+                "extract_pred": "western wood pewee",
+                "target": "tyrannus tyrannus"
+            },
+            {
+                "triple": "(ground, hypernym, ?)",
+                "drkgc_pred": "tie",
+                "extract_pred": "join",
+                "target": "tie"
+            },
+            {
+                "triple": "(wane, hypernym, ?)",
+                "drkgc_pred": "diminution",
+                "extract_pred": "decline",
+                "target": "diminution"
+            },
+            {
+                "triple": "(wideness, hypernym, ?)",
+                "drkgc_pred": "largeness",
+                "extract_pred": "spaciousness",
+                "target": "largeness"
+            },
+            {
+                "triple": "(jib, hypernym, ?)",
+                "drkgc_pred": "fore-and-aft sail",
+                "extract_pred": "sheet",
+                "target": "fore-and-aft sail"
+            },
+            {
+                "triple": "(hall, hypernym, ?)",
+                "drkgc_pred": "hall",
+                "extract_pred": "showroom",
+                "target": "hall"
+            },
+            {
+                "triple": "(genus stevia, hypernym, ?)",
+                "drkgc_pred": "genus stevia",
+                "extract_pred": "genus astronium",
+                "target": "genus stevia"
+            },
+            {
+                "triple": "(rehearsal, hypernym, ?)",
+                "drkgc_pred": "rehearsal",
+                "extract_pred": "lesson",
+                "target": "rehearsal"
+            },
+            {
+                "triple": "(independency, hypernym, ?)",
+                "drkgc_pred": "independency",
+                "extract_pred": "liberty",
+                "target": "independency"
+            },
+            {
+                "triple": "(burner, hypernym, ?)",
+                "drkgc_pred": "setup",
+                "extract_pred": "equipment",
+                "target": "setup"
+            },
+            {
+                "triple": "(mucus, hypernym, ?)",
+                "drkgc_pred": "mucus",
+                "extract_pred": "thyroid hormone",
+                "target": "mucus"
+            },
+            {
+                "triple": "(crown, hypernym, ?)",
+                "drkgc_pred": "vest",
+                "extract_pred": "outfit",
+                "target": "vest"
+            },
+            {
+                "triple": "(italic, hypernym, ?)",
+                "drkgc_pred": "italic",
+                "extract_pred": "pe",
+                "target": "italic"
+            },
+            {
+                "triple": "(stub, hypernym, ?)",
+                "drkgc_pred": "stub",
+                "extract_pred": "improver",
+                "target": "stub"
+            },
+            {
+                "triple": "(sublimaze, hypernym, ?)",
+                "drkgc_pred": "painkiller",
+                "extract_pred": "narcotic",
+                "target": "painkiller"
+            },
+            {
+                "triple": "(haplopappus, hypernym, ?)",
+                "drkgc_pred": "haplopappus",
+                "extract_pred": "genus astronium",
+                "target": "haplopappus"
+            },
+            {
+                "triple": "(distinction, hypernym, ?)",
+                "drkgc_pred": "distinction",
+                "extract_pred": "taste",
+                "target": "distinction"
+            },
+            {
+                "triple": "(adhere, hypernym, ?)",
+                "drkgc_pred": "adhere",
+                "extract_pred": "dispatch",
+                "target": "adhere"
+            },
+            {
+                "triple": "(pulverize, hypernym, ?)",
+                "drkgc_pred": "pulverize",
+                "extract_pred": "fragmentation",
+                "target": "pulverize"
+            },
+            {
+                "triple": "(snooper, hypernym, ?)",
+                "drkgc_pred": "spy",
+                "extract_pred": "eavesdropper",
+                "target": "spy"
+            },
+            {
+                "triple": "(vaccinator, hypernym, ?)",
+                "drkgc_pred": "vaccinator",
+                "extract_pred": "specialist",
+                "target": "vaccinator"
+            },
+            {
+                "triple": "(hijacker, hypernym, ?)",
+                "drkgc_pred": "hijacker",
+                "extract_pred": "procuress",
+                "target": "hijacker"
+            },
+            {
+                "triple": "(fomenter, hypernym, ?)",
+                "drkgc_pred": "fomenter",
+                "extract_pred": "stirrer",
+                "target": "fomenter"
+            },
+            {
+                "triple": "(regulator, hypernym, ?)",
+                "drkgc_pred": "regulator",
+                "extract_pred": "selector switch",
+                "target": "regulator"
+            },
+            {
+                "triple": "(lower, hypernym, ?)",
+                "drkgc_pred": "lower",
+                "extract_pred": "slump",
+                "target": "lower"
+            },
+            {
+                "triple": "(family antedonidae, hypernym, ?)",
+                "drkgc_pred": "family antedonidae",
+                "extract_pred": "family arcidae",
+                "target": "family antedonidae"
+            },
+            {
+                "triple": "(fence line, hypernym, ?)",
+                "drkgc_pred": "fence line",
+                "extract_pred": "verge",
+                "target": "fence line"
+            },
+            {
+                "triple": "(rhine wine, hypernym, ?)",
+                "drkgc_pred": "rhine wine",
+                "extract_pred": "chardonnay grape",
+                "target": "rhine wine"
+            },
+            {
+                "triple": "(silo, hypernym, ?)",
+                "drkgc_pred": "silo",
+                "extract_pred": "air station",
+                "target": "silo"
+            },
+            {
+                "triple": "(case history, hypernym, ?)",
+                "drkgc_pred": "case history",
+                "extract_pred": "cases history",
+                "target": "case history"
+            },
+            {
+                "triple": "(hermannia, hypernym, ?)",
+                "drkgc_pred": "hermannia",
+                "extract_pred": "genus carissa",
+                "target": "hermannia"
+            },
+            {
+                "triple": "(tyrannus tyrannus, hypernym, ?)",
+                "drkgc_pred": "tyrant flycatcher",
+                "extract_pred": "tyrannid",
+                "target": "tyrant flycatcher"
+            },
+            {
+                "triple": "(deportation, hypernym, ?)",
+                "drkgc_pred": "riddance",
+                "extract_pred": "removal",
+                "target": "riddance"
+            },
+            {
+                "triple": "(insisting, hypernym, ?)",
+                "drkgc_pred": "insisting",
+                "extract_pred": "demander",
+                "target": "insisting"
+            },
+            {
+                "triple": "(disapproval, hypernym, ?)",
+                "drkgc_pred": "substance",
+                "extract_pred": "statement",
+                "target": "substance"
+            },
+            {
+                "triple": "(stumble, hypernym, ?)",
+                "drkgc_pred": "stumble",
+                "extract_pred": "walk around",
+                "target": "stumble"
+            },
+            {
+                "triple": "(strangler fig, hypernym, ?)",
+                "drkgc_pred": "strangler fig",
+                "extract_pred": "sapindus saponaria",
+                "target": "strangler fig"
+            },
+            {
+                "triple": "(breeding, hypernym, ?)",
+                "drkgc_pred": "breeding",
+                "extract_pred": "commercialization",
+                "target": "breeding"
+            },
+            {
+                "triple": "(snare, hypernym, ?)",
+                "drkgc_pred": "tempt",
+                "extract_pred": "solicit",
+                "target": "tempt"
+            },
+            {
+                "triple": "(lift, hypernym, ?)",
+                "drkgc_pred": "lift",
+                "extract_pred": "vasectomize",
+                "target": "lift"
+            },
+            {
+                "triple": "(gristle, hypernym, ?)",
+                "drkgc_pred": "gristle",
+                "extract_pred": "protective fold",
+                "target": "gristle"
+            },
+            {
+                "triple": "(double reed, hypernym, ?)",
+                "drkgc_pred": "double reed",
+                "extract_pred": "oboe",
+                "target": "double reed"
+            },
+            {
+                "triple": "(caddoan language, hypernym, ?)",
+                "drkgc_pred": "indian",
+                "extract_pred": "muskogean language",
+                "target": "indian"
+            },
+            {
+                "triple": "(sadhe, hypernym, ?)",
+                "drkgc_pred": "sadhe",
+                "extract_pred": "greek alphabet",
+                "target": "sadhe"
+            },
+            {
+                "triple": "(rarefy, hypernym, ?)",
+                "drkgc_pred": "rarefy",
+                "extract_pred": "tone down",
+                "target": "rarefy"
+            },
+            {
+                "triple": "(train, hypernym, ?)",
+                "drkgc_pred": "take",
+                "extract_pred": "undergo",
+                "target": "take"
+            },
+            {
+                "triple": "(dress, hypernym, ?)",
+                "drkgc_pred": "treat",
+                "extract_pred": "put on",
+                "target": "treat"
+            },
+            {
+                "triple": "(protology, hypernym, ?)",
+                "drkgc_pred": "protology",
+                "extract_pred": "pure mathematics",
+                "target": "protology"
+            },
+            {
+                "triple": "(crescendo, hypernym, ?)",
+                "drkgc_pred": "crescendo",
+                "extract_pred": "strength",
+                "target": "crescendo"
+            },
+            {
+                "triple": "(hahnium, hypernym, ?)",
+                "drkgc_pred": "hahnium",
+                "extract_pred": "sb",
+                "target": "hahnium"
+            },
+            {
+                "triple": "(tie, hypernym, ?)",
+                "drkgc_pred": "bracing",
+                "extract_pred": "mount",
+                "target": "bracing"
+            },
+            {
+                "triple": "(phone, hypernym, ?)",
+                "drkgc_pred": "phone",
+                "extract_pred": "tweeter",
+                "target": "phone"
+            },
+            {
+                "triple": "(troops, hypernym, ?)",
+                "drkgc_pred": "personnel",
+                "extract_pred": "military unit",
+                "target": "personnel"
+            },
+            {
+                "triple": "(ophiophagus, hypernym, ?)",
+                "drkgc_pred": "ophiophagus",
+                "extract_pred": "genus rhinoceros",
+                "target": "ophiophagus"
+            },
+            {
+                "triple": "(clozaril, hypernym, ?)",
+                "drkgc_pred": "neuroleptic drug",
+                "extract_pred": "neuropenic drug",
+                "target": "neuroleptic drug"
+            },
+            {
+                "triple": "(geography, hypernym, ?)",
+                "drkgc_pred": "geography",
+                "extract_pred": "geophysics",
+                "target": "geography"
+            },
+            {
+                "triple": "(life science, hypernym, ?)",
+                "drkgc_pred": "natural science",
+                "extract_pred": "scientific discipline",
+                "target": "natural science"
+            },
+            {
+                "triple": "(supreme court, hypernym, ?)",
+                "drkgc_pred": "tribunal",
+                "extract_pred": "court of appeals",
+                "target": "tribunal"
+            },
+            {
+                "triple": "(glare, hypernym, ?)",
+                "drkgc_pred": "brightness",
+                "extract_pred": "visual signal",
+                "target": "brightness"
+            },
+            {
+                "triple": "(primus stove, hypernym, ?)",
+                "drkgc_pred": "stove",
+                "extract_pred": "potbelly stove",
+                "target": "stove"
+            },
+            {
+                "triple": "(kaury, hypernym, ?)",
+                "drkgc_pred": "kaury",
+                "extract_pred": "tarwood",
+                "target": "kaury"
+            },
+            {
+                "triple": "(ulmus carpinifolia, hypernym, ?)",
+                "drkgc_pred": "ulmus carpinifolia",
+                "extract_pred": "ulmus",
+                "target": "ulmus carpinifolia"
+            },
+            {
+                "triple": "(turn, hypernym, ?)",
+                "drkgc_pred": "turn",
+                "extract_pred": "paint",
+                "target": "turn"
+            },
+            {
+                "triple": "(cavy, hypernym, ?)",
+                "drkgc_pred": "cavy",
+                "extract_pred": "rattus norvegicus",
+                "target": "cavy"
+            },
+            {
+                "triple": "(occultism, hypernym, ?)",
+                "drkgc_pred": "occultism",
+                "extract_pred": "pure mathematics",
+                "target": "occultism"
+            },
+            {
+                "triple": "(rerun, hypernym, ?)",
+                "drkgc_pred": "rerun",
+                "extract_pred": "pilot program",
+                "target": "rerun"
+            },
+            {
+                "triple": "(star earthball, hypernym, ?)",
+                "drkgc_pred": "star earthball",
+                "extract_pred": "fistulina hepatica",
+                "target": "star earthball"
+            },
+            {
+                "triple": "(blooming, hypernym, ?)",
+                "drkgc_pred": "blooming",
+                "extract_pred": "life cycle",
+                "target": "blooming"
+            },
+            {
+                "triple": "(ventilation shaft, hypernym, ?)",
+                "drkgc_pred": "ventilation shaft",
+                "extract_pred": "countermine",
+                "target": "ventilation shaft"
+            },
+            {
+                "triple": "(fudge, hypernym, ?)",
+                "drkgc_pred": "fudge",
+                "extract_pred": "chocolate candy",
+                "target": "fudge"
+            },
+            {
+                "triple": "(years, hypernym, ?)",
+                "drkgc_pred": "time of life",
+                "extract_pred": "time period",
+                "target": "time of life"
+            },
+            {
+                "triple": "(garnish, hypernym, ?)",
+                "drkgc_pred": "garnish",
+                "extract_pred": "beadwork",
+                "target": "garnish"
+            },
+            {
+                "triple": "(drill master, hypernym, ?)",
+                "drkgc_pred": "drill master",
+                "extract_pred": "section eight",
+                "target": "drill master"
+            },
+            {
+                "triple": "(traverse, hypernym, ?)",
+                "drkgc_pred": "pass",
+                "extract_pred": "travel",
+                "target": "pass"
+            },
+            {
+                "triple": "(voice, hypernym, ?)",
+                "drkgc_pred": "tune",
+                "extract_pred": "music",
+                "target": "tune"
+            },
+            {
+                "triple": "(expatriate, hypernym, ?)",
+                "drkgc_pred": "throw out",
+                "extract_pred": "emigrate",
+                "target": "throw out"
+            },
+            {
+                "triple": "(develop, hypernym, ?)",
+                "drkgc_pred": "generate",
+                "extract_pred": "stimulate",
+                "target": "generate"
+            },
+            {
+                "triple": "(headline, hypernym, ?)",
+                "drkgc_pred": "headline",
+                "extract_pred": "popularize",
+                "target": "headline"
+            },
+            {
+                "triple": "(personality, hypernym, ?)",
+                "drkgc_pred": "attribute",
+                "extract_pred": "trait",
+                "target": "attribute"
+            },
+            {
+                "triple": "(pleiospilos, hypernym, ?)",
+                "drkgc_pred": "pleiospilos",
+                "extract_pred": "tradescantia",
+                "target": "pleiospilos"
+            },
+            {
+                "triple": "(york, hypernym, ?)",
+                "drkgc_pred": "york",
+                "extract_pred": "royalty",
+                "target": "york"
+            },
+            {
+                "triple": "(egyptian, hypernym, ?)",
+                "drkgc_pred": "egyptian",
+                "extract_pred": "state of eritrea",
+                "target": "egyptian"
+            },
+            {
+                "triple": "(family anthocerotaceae, hypernym, ?)",
+                "drkgc_pred": "family anthocerotaceae",
+                "extract_pred": "selaginellaceae",
+                "target": "family anthocerotaceae"
+            },
+            {
+                "triple": "(vermiculate, hypernym, ?)",
+                "drkgc_pred": "vermiculate",
+                "extract_pred": "illustration",
+                "target": "vermiculate"
+            },
+            {
+                "triple": "(fumes, hypernym, ?)",
+                "drkgc_pred": "gas",
+                "extract_pred": "emission",
+                "target": "gas"
+            },
+            {
+                "triple": "(transit, hypernym, ?)",
+                "drkgc_pred": "transit",
+                "extract_pred": "altimeter",
+                "target": "transit"
+            },
+            {
+                "triple": "(tribesman, hypernym, ?)",
+                "drkgc_pred": "tribesman",
+                "extract_pred": "chapter",
+                "target": "tribesman"
+            },
+            {
+                "triple": "(relocate, hypernym, ?)",
+                "drkgc_pred": "relocate",
+                "extract_pred": "sink",
+                "target": "relocate"
+            },
+            {
+                "triple": "(calyculus, hypernym, ?)",
+                "drkgc_pred": "calyculus",
+                "extract_pred": "ocular muscle",
+                "target": "calyculus"
+            },
+            {
+                "triple": "(conch, hypernym, ?)",
+                "drkgc_pred": "univalve",
+                "extract_pred": "seasnail",
+                "target": "univalve"
+            },
+            {
+                "triple": "(mumble, hypernym, ?)",
+                "drkgc_pred": "mumble",
+                "extract_pred": "yelling",
+                "target": "mumble"
+            },
+            {
+                "triple": "(racing circuit, hypernym, ?)",
+                "drkgc_pred": "racing circuit",
+                "extract_pred": "stretch",
+                "target": "racing circuit"
+            },
+            {
+                "triple": "(reader, hypernym, ?)",
+                "drkgc_pred": "reader",
+                "extract_pred": "monsignor",
+                "target": "reader"
+            },
+            {
+                "triple": "(dardic language, hypernym, ?)",
+                "drkgc_pred": "dardic language",
+                "extract_pred": "hindi",
+                "target": "dardic language"
+            },
+            {
+                "triple": "(riffle, hypernym, ?)",
+                "drkgc_pred": "riffle",
+                "extract_pred": "reshuffling",
+                "target": "riffle"
+            }
+        ],
+        "only_extract": [
+            {
+                "triple": "(spleen, hypernym, ?)",
+                "drkgc_pred": "viscus",
+                "extract_pred": "lymphoid tissue",
+                "target": "lymphoid tissue"
+            },
+            {
+                "triple": "(embrace, hypernym, ?)",
+                "drkgc_pred": "acceptance",
+                "extract_pred": "espousal",
+                "target": "espousal"
+            },
+            {
+                "triple": "(obfuscate, hypernym, ?)",
+                "drkgc_pred": "vex",
+                "extract_pred": "modify",
+                "target": "modify"
+            },
+            {
+                "triple": "(final cause, hypernym, ?)",
+                "drkgc_pred": "goal",
+                "extract_pred": "purpose",
+                "target": "purpose"
+            },
+            {
+                "triple": "(fragmentation, hypernym, ?)",
+                "drkgc_pred": "spreading",
+                "extract_pred": "explosion",
+                "target": "explosion"
+            },
+            {
+                "triple": "(prim up, hypernym, ?)",
+                "drkgc_pred": "primp",
+                "extract_pred": "tog",
+                "target": "tog"
+            },
+            {
+                "triple": "(dig out, hypernym, ?)",
+                "drkgc_pred": "groove",
+                "extract_pred": "dig out",
+                "target": "dig out"
+            },
+            {
+                "triple": "(patronymic, hypernym, ?)",
+                "drkgc_pred": "designation",
+                "extract_pred": "name",
+                "target": "name"
+            },
+            {
+                "triple": "(impact, hypernym, ?)",
+                "drkgc_pred": "wiper arm",
+                "extract_pred": "impact",
+                "target": "impact"
+            },
+            {
+                "triple": "(sandfish, hypernym, ?)",
+                "drkgc_pred": "teleostan",
+                "extract_pred": "soft-finned fish",
+                "target": "soft-finned fish"
+            },
+            {
+                "triple": "(dazzle, hypernym, ?)",
+                "drkgc_pred": "winker",
+                "extract_pred": "dazzle",
+                "target": "dazzle"
+            },
+            {
+                "triple": "(tinned goods, hypernym, ?)",
+                "drkgc_pred": "produce",
+                "extract_pred": "foodstuff",
+                "target": "foodstuff"
+            },
+            {
+                "triple": "(jelly fungus, hypernym, ?)",
+                "drkgc_pred": "helvella",
+                "extract_pred": "jelly fungus",
+                "target": "jelly fungus"
+            },
+            {
+                "triple": "(mindfulness, hypernym, ?)",
+                "drkgc_pred": "discipline",
+                "extract_pred": "attentiveness",
+                "target": "attentiveness"
+            },
+            {
+                "triple": "(pereskia, hypernym, ?)",
+                "drkgc_pred": "magnoliopsid genus",
+                "extract_pred": "caryophylloid dicot genus",
+                "target": "caryophylloid dicot genus"
+            },
+            {
+                "triple": "(excise tax, hypernym, ?)",
+                "drkgc_pred": "taxation",
+                "extract_pred": "indirect tax",
+                "target": "indirect tax"
+            },
+            {
+                "triple": "(wane, hypernym, ?)",
+                "drkgc_pred": "waning",
+                "extract_pred": "wane",
+                "target": "wane"
+            },
+            {
+                "triple": "(isn, hypernym, ?)",
+                "drkgc_pred": "intelligence service",
+                "extract_pred": "international intelligence agency",
+                "target": "international intelligence agency"
+            },
+            {
+                "triple": "(hobbyist, hypernym, ?)",
+                "drkgc_pred": "rookie",
+                "extract_pred": "hobbyist",
+                "target": "hobbyist"
+            },
+            {
+                "triple": "(scincidae, hypernym, ?)",
+                "drkgc_pred": "family cordylidae",
+                "extract_pred": "scincidae",
+                "target": "scincidae"
+            },
+            {
+                "triple": "(out-herod, hypernym, ?)",
+                "drkgc_pred": "outsmart",
+                "extract_pred": "out-herod",
+                "target": "out-herod"
+            },
+            {
+                "triple": "(facial hair, hypernym, ?)",
+                "drkgc_pred": "pilus",
+                "extract_pred": "facial hair",
+                "target": "facial hair"
+            },
+            {
+                "triple": "(shoot, hypernym, ?)",
+                "drkgc_pred": "give",
+                "extract_pred": "shoot",
+                "target": "shoot"
+            },
+            {
+                "triple": "(welcomer, hypernym, ?)",
+                "drkgc_pred": "traveller",
+                "extract_pred": "soul",
+                "target": "soul"
+            },
+            {
+                "triple": "(hold in, hypernym, ?)",
+                "drkgc_pred": "bound",
+                "extract_pred": "hold",
+                "target": "hold"
+            },
+            {
+                "triple": "(phylum chordata, hypernym, ?)",
+                "drkgc_pred": "hydrozoa",
+                "extract_pred": "phylum chordata",
+                "target": "phylum chordata"
+            },
+            {
+                "triple": "(potman, hypernym, ?)",
+                "drkgc_pred": "worker",
+                "extract_pred": "employee",
+                "target": "employee"
+            },
+            {
+                "triple": "(genus actaea, hypernym, ?)",
+                "drkgc_pred": "macleaya",
+                "extract_pred": "genus actaea",
+                "target": "genus actaea"
+            },
+            {
+                "triple": "(sculpture, hypernym, ?)",
+                "drkgc_pred": "shape",
+                "extract_pred": "work",
+                "target": "work"
+            },
+            {
+                "triple": "(genus bartramia, hypernym, ?)",
+                "drkgc_pred": "icterus galbula galbula",
+                "extract_pred": "genus bartramia",
+                "target": "genus bartramia"
+            },
+            {
+                "triple": "(coenzyme, hypernym, ?)",
+                "drkgc_pred": "supermolecule",
+                "extract_pred": "molecule",
+                "target": "molecule"
+            },
+            {
+                "triple": "(seaplane, hypernym, ?)",
+                "drkgc_pred": "b-52",
+                "extract_pred": "seaplane",
+                "target": "seaplane"
+            },
+            {
+                "triple": "(rivet, hypernym, ?)",
+                "drkgc_pred": "orientate",
+                "extract_pred": "think",
+                "target": "think"
+            },
+            {
+                "triple": "(york, hypernym, ?)",
+                "drkgc_pred": "house",
+                "extract_pred": "dynasty",
+                "target": "dynasty"
+            },
+            {
+                "triple": "(pain in the neck, hypernym, ?)",
+                "drkgc_pred": "concern",
+                "extract_pred": "pain in the neck",
+                "target": "pain in the neck"
+            },
+            {
+                "triple": "(synthesizer, hypernym, ?)",
+                "drkgc_pred": "electronic device",
+                "extract_pred": "keyboard instrument",
+                "target": "keyboard instrument"
+            },
+            {
+                "triple": "(australopithecine, hypernym, ?)",
+                "drkgc_pred": "primate",
+                "extract_pred": "hominid",
+                "target": "hominid"
+            },
+            {
+                "triple": "(grandchild, hypernym, ?)",
+                "drkgc_pred": "kid",
+                "extract_pred": "progeny",
+                "target": "progeny"
+            },
+            {
+                "triple": "(pat, hypernym, ?)",
+                "drkgc_pred": "fondle",
+                "extract_pred": "pat",
+                "target": "pat"
+            },
+            {
+                "triple": "(signal flag, hypernym, ?)",
+                "drkgc_pred": "flag",
+                "extract_pred": "visual signal",
+                "target": "visual signal"
+            },
+            {
+                "triple": "(play, hypernym, ?)",
+                "drkgc_pred": "move",
+                "extract_pred": "act",
+                "target": "act"
+            },
+            {
+                "triple": "(mullah, hypernym, ?)",
+                "drkgc_pred": "religious leader",
+                "extract_pred": "muslim",
+                "target": "muslim"
+            },
+            {
+                "triple": "(rectilinear regression, hypernym, ?)",
+                "drkgc_pred": "statistical procedure",
+                "extract_pred": "statistical regression",
+                "target": "statistical regression"
+            },
+            {
+                "triple": "(ionization tube, hypernym, ?)",
+                "drkgc_pred": "time",
+                "extract_pred": "ionization tube",
+                "target": "ionization tube"
+            },
+            {
+                "triple": "(bran, hypernym, ?)",
+                "drkgc_pred": "chittem bark",
+                "extract_pred": "bran",
+                "target": "bran"
+            },
+            {
+                "triple": "(sculpture, hypernym, ?)",
+                "drkgc_pred": "turn",
+                "extract_pred": "sculpture",
+                "target": "sculpture"
+            },
+            {
+                "triple": "(waste, hypernym, ?)",
+                "drkgc_pred": "spend",
+                "extract_pred": "use",
+                "target": "use"
+            },
+            {
+                "triple": "(time to come, hypernym, ?)",
+                "drkgc_pred": "coming",
+                "extract_pred": "time",
+                "target": "time"
+            },
+            {
+                "triple": "(uxor, hypernym, ?)",
+                "drkgc_pred": "newlywed",
+                "extract_pred": "uxor",
+                "target": "uxor"
+            },
+            {
+                "triple": "(x ray, hypernym, ?)",
+                "drkgc_pred": "pneumoencephalogram",
+                "extract_pred": "x ray",
+                "target": "x ray"
+            },
+            {
+                "triple": "(dardic language, hypernym, ?)",
+                "drkgc_pred": "sanskritic language",
+                "extract_pred": "indo-aryan",
+                "target": "indo-aryan"
+            },
+            {
+                "triple": "(smyrnium, hypernym, ?)",
+                "drkgc_pred": "magnoliopsid genus",
+                "extract_pred": "rosid dicot genus",
+                "target": "rosid dicot genus"
+            },
+            {
+                "triple": "(cecum, hypernym, ?)",
+                "drkgc_pred": "viscus",
+                "extract_pred": "cavum",
+                "target": "cavum"
+            },
+            {
+                "triple": "(beat, hypernym, ?)",
+                "drkgc_pred": "sound",
+                "extract_pred": "play",
+                "target": "play"
+            },
+            {
+                "triple": "(saving, hypernym, ?)",
+                "drkgc_pred": "activity",
+                "extract_pred": "protection",
+                "target": "protection"
+            },
+            {
+                "triple": "(prunus padus, hypernym, ?)",
+                "drkgc_pred": "cherry tree",
+                "extract_pred": "bird cherry tree",
+                "target": "bird cherry tree"
+            },
+            {
+                "triple": "(genus caltha, hypernym, ?)",
+                "drkgc_pred": "macleaya",
+                "extract_pred": "genus caltha",
+                "target": "genus caltha"
+            },
+            {
+                "triple": "(cup, hypernym, ?)",
+                "drkgc_pred": "pot",
+                "extract_pred": "cup",
+                "target": "cup"
+            },
+            {
+                "triple": "(signer, hypernym, ?)",
+                "drkgc_pred": "soul",
+                "extract_pred": "communicator",
+                "target": "communicator"
+            },
+            {
+                "triple": "(religious cult, hypernym, ?)",
+                "drkgc_pred": "religion",
+                "extract_pred": "religious belief",
+                "target": "religious belief"
+            },
+            {
+                "triple": "(marsilea, hypernym, ?)",
+                "drkgc_pred": "phyllitis scolopendrium",
+                "extract_pred": "marsilea",
+                "target": "marsilea"
+            },
+            {
+                "triple": "(size, hypernym, ?)",
+                "drkgc_pred": "property",
+                "extract_pred": "magnitude",
+                "target": "magnitude"
+            },
+            {
+                "triple": "(restriction, hypernym, ?)",
+                "drkgc_pred": "principle",
+                "extract_pred": "rule",
+                "target": "rule"
+            },
+            {
+                "triple": "(ophiodontidae, hypernym, ?)",
+                "drkgc_pred": "family balaenopteridae",
+                "extract_pred": "ophiodontidae",
+                "target": "ophiodontidae"
+            },
+            {
+                "triple": "(unthaw, hypernym, ?)",
+                "drkgc_pred": "change integrity",
+                "extract_pred": "liquify",
+                "target": "liquify"
+            },
+            {
+                "triple": "(train, hypernym, ?)",
+                "drkgc_pred": "stress",
+                "extract_pred": "refine",
+                "target": "refine"
+            },
+            {
+                "triple": "(inertia, hypernym, ?)",
+                "drkgc_pred": "temperament",
+                "extract_pred": "trait",
+                "target": "trait"
+            },
+            {
+                "triple": "(tsuga, hypernym, ?)",
+                "drkgc_pred": "coniferous tree",
+                "extract_pred": "gymnosperm genus",
+                "target": "gymnosperm genus"
+            },
+            {
+                "triple": "(feature article, hypernym, ?)",
+                "drkgc_pred": "newssheet",
+                "extract_pred": "feature article",
+                "target": "feature article"
+            },
+            {
+                "triple": "(train, hypernym, ?)",
+                "drkgc_pred": "tow",
+                "extract_pred": "train",
+                "target": "train"
+            },
+            {
+                "triple": "(fittingness, hypernym, ?)",
+                "drkgc_pred": "quality",
+                "extract_pred": "suitableness",
+                "target": "suitableness"
+            },
+            {
+                "triple": "(wintertime, hypernym, ?)",
+                "drkgc_pred": "march",
+                "extract_pred": "wintertime",
+                "target": "wintertime"
+            },
+            {
+                "triple": "(knock on, hypernym, ?)",
+                "drkgc_pred": "obstruction",
+                "extract_pred": "play",
+                "target": "play"
+            },
+            {
+                "triple": "(icon, hypernym, ?)",
+                "drkgc_pred": "graphic symbol",
+                "extract_pred": "symbol",
+                "target": "symbol"
+            },
+            {
+                "triple": "(drumfish, hypernym, ?)",
+                "drkgc_pred": "plectognath fish",
+                "extract_pred": "sciaenid fish",
+                "target": "sciaenid fish"
+            },
+            {
+                "triple": "(retrench, hypernym, ?)",
+                "drkgc_pred": "tinker",
+                "extract_pred": "retrench",
+                "target": "retrench"
+            },
+            {
+                "triple": "(disagreeableness, hypernym, ?)",
+                "drkgc_pred": "ill nature",
+                "extract_pred": "temperament",
+                "target": "temperament"
+            },
+            {
+                "triple": "(kaury, hypernym, ?)",
+                "drkgc_pred": "coniferous tree",
+                "extract_pred": "kauri pine",
+                "target": "kauri pine"
+            },
+            {
+                "triple": "(comparative negligence, hypernym, ?)",
+                "drkgc_pred": "omissive",
+                "extract_pred": "comparative negligence",
+                "target": "comparative negligence"
+            },
+            {
+                "triple": "(exabyte, hypernym, ?)",
+                "drkgc_pred": "memory chip",
+                "extract_pred": "exabyte",
+                "target": "exabyte"
+            },
+            {
+                "triple": "(women's liberation movement, hypernym, ?)",
+                "drkgc_pred": "social movement",
+                "extract_pred": "movement",
+                "target": "movement"
+            },
+            {
+                "triple": "(synthetic fiber, hypernym, ?)",
+                "drkgc_pred": "new zealand cotton",
+                "extract_pred": "synthetic fiber",
+                "target": "synthetic fiber"
+            },
+            {
+                "triple": "(rickettsiaceae, hypernym, ?)",
+                "drkgc_pred": "nitrobacteriaceae",
+                "extract_pred": "rickettsiaceae",
+                "target": "rickettsiaceae"
+            },
+            {
+                "triple": "(minniebush, hypernym, ?)",
+                "drkgc_pred": "dwarf elder",
+                "extract_pred": "minniebush",
+                "target": "minniebush"
+            },
+            {
+                "triple": "(true sparrow, hypernym, ?)",
+                "drkgc_pred": "oscine bird",
+                "extract_pred": "passerine",
+                "target": "passerine"
+            },
+            {
+                "triple": "(scaphiopus, hypernym, ?)",
+                "drkgc_pred": "spring frog",
+                "extract_pred": "scaphiopus",
+                "target": "scaphiopus"
+            },
+            {
+                "triple": "(pullback, hypernym, ?)",
+                "drkgc_pred": "retreat",
+                "extract_pred": "withdrawal",
+                "target": "withdrawal"
+            },
+            {
+                "triple": "(future progressive tense, hypernym, ?)",
+                "drkgc_pred": "tense",
+                "extract_pred": "progressive tense",
+                "target": "progressive tense"
+            },
+            {
+                "triple": "(scraping, hypernym, ?)",
+                "drkgc_pred": "reverence",
+                "extract_pred": "obeisance",
+                "target": "obeisance"
+            },
+            {
+                "triple": "(self-propelled vehicle, hypernym, ?)",
+                "drkgc_pred": "vehicle",
+                "extract_pred": "wheeled vehicle",
+                "target": "wheeled vehicle"
+            },
+            {
+                "triple": "(grand dragon, hypernym, ?)",
+                "drkgc_pred": "patrician",
+                "extract_pred": "top dog",
+                "target": "top dog"
+            },
+            {
+                "triple": "(ruptiliocarpon, hypernym, ?)",
+                "drkgc_pred": "mimosaceae",
+                "extract_pred": "ruptiliocarpon",
+                "target": "ruptiliocarpon"
+            },
+            {
+                "triple": "(family cestidae, hypernym, ?)",
+                "drkgc_pred": "echinoderm family",
+                "extract_pred": "family cestidae",
+                "target": "family cestidae"
+            },
+            {
+                "triple": "(double reed, hypernym, ?)",
+                "drkgc_pred": "woodwind instrument",
+                "extract_pred": "reed instrument",
+                "target": "reed instrument"
+            },
+            {
+                "triple": "(weightiness, hypernym, ?)",
+                "drkgc_pred": "ponderousness",
+                "extract_pred": "weightiness",
+                "target": "weightiness"
+            },
+            {
+                "triple": "(emission, hypernym, ?)",
+                "drkgc_pred": "substance",
+                "extract_pred": "stuff",
+                "target": "stuff"
+            },
+            {
+                "triple": "(withholding tax, hypernym, ?)",
+                "drkgc_pred": "taxation",
+                "extract_pred": "income tax",
+                "target": "income tax"
+            },
+            {
+                "triple": "(bioweapon, hypernym, ?)",
+                "drkgc_pred": "weapon system",
+                "extract_pred": "wmd",
+                "target": "wmd"
+            },
+            {
+                "triple": "(equality, hypernym, ?)",
+                "drkgc_pred": "quality",
+                "extract_pred": "sameness",
+                "target": "sameness"
+            },
+            {
+                "triple": "(olive family, hypernym, ?)",
+                "drkgc_pred": "rubiaceae",
+                "extract_pred": "olive family",
+                "target": "olive family"
+            },
+            {
+                "triple": "(twitch, hypernym, ?)",
+                "drkgc_pred": "move",
+                "extract_pred": "move reflexively",
+                "target": "move reflexively"
+            },
+            {
+                "triple": "(sturgeon, hypernym, ?)",
+                "drkgc_pred": "white sturgeon",
+                "extract_pred": "sturgeon",
+                "target": "sturgeon"
+            },
+            {
+                "triple": "(hamstring, hypernym, ?)",
+                "drkgc_pred": "thwart",
+                "extract_pred": "torment",
+                "target": "torment"
+            },
+            {
+                "triple": "(stomatopod crustacean, hypernym, ?)",
+                "drkgc_pred": "crab",
+                "extract_pred": "stomatopod crustacean",
+                "target": "stomatopod crustacean"
+            },
+            {
+                "triple": "(gramma grass, hypernym, ?)",
+                "drkgc_pred": "bluegrass",
+                "extract_pred": "grass",
+                "target": "grass"
+            },
+            {
+                "triple": "(appropriation, hypernym, ?)",
+                "drkgc_pred": "expense",
+                "extract_pred": "money",
+                "target": "money"
+            },
+            {
+                "triple": "(jib, hypernym, ?)",
+                "drkgc_pred": "penoncel",
+                "extract_pred": "jib",
+                "target": "jib"
+            },
+            {
+                "triple": "(standing army, hypernym, ?)",
+                "drkgc_pred": "corps",
+                "extract_pred": "standing army",
+                "target": "standing army"
+            },
+            {
+                "triple": "(shaft, hypernym, ?)",
+                "drkgc_pred": "tunnel",
+                "extract_pred": "shaft",
+                "target": "shaft"
+            },
+            {
+                "triple": "(bill, hypernym, ?)",
+                "drkgc_pred": "publicize",
+                "extract_pred": "push",
+                "target": "push"
+            },
+            {
+                "triple": "(put up, hypernym, ?)",
+                "drkgc_pred": "move",
+                "extract_pred": "propose",
+                "target": "propose"
+            },
+            {
+                "triple": "(traverse, hypernym, ?)",
+                "drkgc_pred": "penetrate",
+                "extract_pred": "traverse",
+                "target": "traverse"
+            },
+            {
+                "triple": "(digital communication, hypernym, ?)",
+                "drkgc_pred": "telephone call",
+                "extract_pred": "digital communication",
+                "target": "digital communication"
+            },
+            {
+                "triple": "(scull, hypernym, ?)",
+                "drkgc_pred": "rower",
+                "extract_pred": "scull",
+                "target": "scull"
+            },
+            {
+                "triple": "(flying lizard, hypernym, ?)",
+                "drkgc_pred": "lizard",
+                "extract_pred": "agamid lizard",
+                "target": "agamid lizard"
+            },
+            {
+                "triple": "(senior, hypernym, ?)",
+                "drkgc_pred": "soul",
+                "extract_pred": "grownup",
+                "target": "grownup"
+            },
+            {
+                "triple": "(smash, hypernym, ?)",
+                "drkgc_pred": "strike",
+                "extract_pred": "hit",
+                "target": "hit"
+            },
+            {
+                "triple": "(semblance, hypernym, ?)",
+                "drkgc_pred": "shot",
+                "extract_pred": "semblance",
+                "target": "semblance"
+            },
+            {
+                "triple": "(stitchery, hypernym, ?)",
+                "drkgc_pred": "lace",
+                "extract_pred": "stitchery",
+                "target": "stitchery"
+            },
+            {
+                "triple": "(reprove, hypernym, ?)",
+                "drkgc_pred": "reprimand",
+                "extract_pred": "pick apart",
+                "target": "pick apart"
+            },
+            {
+                "triple": "(rooter skunk, hypernym, ?)",
+                "drkgc_pred": "neotoma fuscipes",
+                "extract_pred": "rooter skunk",
+                "target": "rooter skunk"
+            },
+            {
+                "triple": "(fund, hypernym, ?)",
+                "drkgc_pred": "invest",
+                "extract_pred": "put",
+                "target": "put"
+            },
+            {
+                "triple": "(sterilize, hypernym, ?)",
+                "drkgc_pred": "sodium hypochlorite",
+                "extract_pred": "sterilize",
+                "target": "sterilize"
+            },
+            {
+                "triple": "(spoil, hypernym, ?)",
+                "drkgc_pred": "give",
+                "extract_pred": "treat",
+                "target": "treat"
+            },
+            {
+                "triple": "(craps, hypernym, ?)",
+                "drkgc_pred": "wager",
+                "extract_pred": "craps",
+                "target": "craps"
+            },
+            {
+                "triple": "(wreath, hypernym, ?)",
+                "drkgc_pred": "ornamentation",
+                "extract_pred": "flower arrangement",
+                "target": "flower arrangement"
+            },
+            {
+                "triple": "(paleocortex, hypernym, ?)",
+                "drkgc_pred": "neural structure",
+                "extract_pred": "pallium",
+                "target": "pallium"
+            },
+            {
+                "triple": "(covenant, hypernym, ?)",
+                "drkgc_pred": "vow",
+                "extract_pred": "plight",
+                "target": "plight"
+            },
+            {
+                "triple": "(wrist bone, hypernym, ?)",
+                "drkgc_pred": "os longum",
+                "extract_pred": "os",
+                "target": "os"
+            },
+            {
+                "triple": "(preservation, hypernym, ?)",
+                "drkgc_pred": "melioration",
+                "extract_pred": "improvement",
+                "target": "improvement"
+            },
+            {
+                "triple": "(profundity, hypernym, ?)",
+                "drkgc_pred": "depth",
+                "extract_pred": "wisdom",
+                "target": "wisdom"
+            },
+            {
+                "triple": "(salvinia, hypernym, ?)",
+                "drkgc_pred": "phyllitis scolopendrium",
+                "extract_pred": "salvinia",
+                "target": "salvinia"
+            },
+            {
+                "triple": "(spirodela, hypernym, ?)",
+                "drkgc_pred": "tribonema",
+                "extract_pred": "spirodela",
+                "target": "spirodela"
+            },
+            {
+                "triple": "(family cestidae, hypernym, ?)",
+                "drkgc_pred": "worm family",
+                "extract_pred": "ctenophore family",
+                "target": "ctenophore family"
+            },
+            {
+                "triple": "(waddle, hypernym, ?)",
+                "drkgc_pred": "gait",
+                "extract_pred": "walk",
+                "target": "walk"
+            },
+            {
+                "triple": "(work, hypernym, ?)",
+                "drkgc_pred": "operate",
+                "extract_pred": "run",
+                "target": "run"
+            },
+            {
+                "triple": "(ward off, hypernym, ?)",
+                "drkgc_pred": "rid of",
+                "extract_pred": "ward off",
+                "target": "ward off"
+            },
+            {
+                "triple": "(sparring, hypernym, ?)",
+                "drkgc_pred": "tiff",
+                "extract_pred": "sparring",
+                "target": "sparring"
+            },
+            {
+                "triple": "(sensitizer, hypernym, ?)",
+                "drkgc_pred": "substance",
+                "extract_pred": "activator",
+                "target": "activator"
+            },
+            {
+                "triple": "(genus anacyclus, hypernym, ?)",
+                "drkgc_pred": "magnoliopsid genus",
+                "extract_pred": "asterid dicot genus",
+                "target": "asterid dicot genus"
+            },
+            {
+                "triple": "(degree, hypernym, ?)",
+                "drkgc_pred": "unit of measurement",
+                "extract_pred": "temperature unit",
+                "target": "temperature unit"
+            },
+            {
+                "triple": "(skipper, hypernym, ?)",
+                "drkgc_pred": "officer",
+                "extract_pred": "ship's officer",
+                "target": "ship's officer"
+            },
+            {
+                "triple": "(percolate, hypernym, ?)",
+                "drkgc_pred": "filtrate",
+                "extract_pred": "percolate",
+                "target": "percolate"
+            },
+            {
+                "triple": "(spalacidae, hypernym, ?)",
+                "drkgc_pred": "moschus",
+                "extract_pred": "spalacidae",
+                "target": "spalacidae"
+            },
+            {
+                "triple": "(egis, hypernym, ?)",
+                "drkgc_pred": "vambrace",
+                "extract_pred": "egis",
+                "target": "egis"
+            },
+            {
+                "triple": "(stealth, hypernym, ?)",
+                "drkgc_pred": "hiding",
+                "extract_pred": "stealth",
+                "target": "stealth"
+            },
+            {
+                "triple": "(manure, hypernym, ?)",
+                "drkgc_pred": "excretory product",
+                "extract_pred": "organic fertilizer",
+                "target": "organic fertilizer"
+            },
+            {
+                "triple": "(groove, hypernym, ?)",
+                "drkgc_pred": "touch on",
+                "extract_pred": "incise",
+                "target": "incise"
+            },
+            {
+                "triple": "(boxwood, hypernym, ?)",
+                "drkgc_pred": "sweetbrier",
+                "extract_pred": "boxwood",
+                "target": "boxwood"
+            },
+            {
+                "triple": "(lamphouse, hypernym, ?)",
+                "drkgc_pred": "chassis",
+                "extract_pred": "lamphouse",
+                "target": "lamphouse"
+            },
+            {
+                "triple": "(turnout, hypernym, ?)",
+                "drkgc_pred": "pirouette",
+                "extract_pred": "turnout",
+                "target": "turnout"
+            },
+            {
+                "triple": "(sparring, hypernym, ?)",
+                "drkgc_pred": "debate",
+                "extract_pred": "tilt",
+                "target": "tilt"
+            },
+            {
+                "triple": "(break, hypernym, ?)",
+                "drkgc_pred": "shot",
+                "extract_pred": "stroke",
+                "target": "stroke"
+            },
+            {
+                "triple": "(refrigerator, hypernym, ?)",
+                "drkgc_pred": "fridge",
+                "extract_pred": "refrigerator",
+                "target": "refrigerator"
+            },
+            {
+                "triple": "(bran, hypernym, ?)",
+                "drkgc_pred": "plant substance",
+                "extract_pred": "stubble",
+                "target": "stubble"
+            },
+            {
+                "triple": "(supercilium, hypernym, ?)",
+                "drkgc_pred": "lineament",
+                "extract_pred": "hair",
+                "target": "hair"
+            },
+            {
+                "triple": "(hexane, hypernym, ?)",
+                "drkgc_pred": "hydrocarbon",
+                "extract_pred": "solvent",
+                "target": "solvent"
+            }
+        ]
+    },
+    "member meronym": {
+        "only_drkgc": [
+            {
+                "triple": "(order ciconiiformes, member meronym, ?)",
+                "drkgc_pred": "family ardeidae",
+                "extract_pred": "stork",
+                "target": "family ardeidae"
+            },
+            {
+                "triple": "(mustelidae, member meronym, ?)",
+                "drkgc_pred": "taxidea",
+                "extract_pred": "mustela nigripes",
+                "target": "taxidea"
+            },
+            {
+                "triple": "(kingdom animalia, member meronym, ?)",
+                "drkgc_pred": "phylum brachiopoda",
+                "extract_pred": "phylum coelenterata",
+                "target": "phylum brachiopoda"
+            },
+            {
+                "triple": "(hydrangeaceae, member meronym, ?)",
+                "drkgc_pred": "schizophragma",
+                "extract_pred": "saxifraga",
+                "target": "schizophragma"
+            },
+            {
+                "triple": "(family cyprinidae, member meronym, ?)",
+                "drkgc_pred": "family cyprinidae",
+                "extract_pred": "gobiidae",
+                "target": "family cyprinidae"
+            },
+            {
+                "triple": "(family carangidae, member meronym, ?)",
+                "drkgc_pred": "naucrates",
+                "extract_pred": "genus brevoortia",
+                "target": "naucrates"
+            },
+            {
+                "triple": "(class aves, member meronym, ?)",
+                "drkgc_pred": "psittaciformes",
+                "extract_pred": "passerine",
+                "target": "psittaciformes"
+            },
+            {
+                "triple": "(genus citrullus, member meronym, ?)",
+                "drkgc_pred": "watermelon vine",
+                "extract_pred": "cushaw",
+                "target": "watermelon vine"
+            },
+            {
+                "triple": "(suborder serpentes, member meronym, ?)",
+                "drkgc_pred": "hydrophidae",
+                "extract_pred": "subfamily pythoninae",
+                "target": "hydrophidae"
+            },
+            {
+                "triple": "(order isoptera, member meronym, ?)",
+                "drkgc_pred": "order isoptera",
+                "extract_pred": "termitidae",
+                "target": "order isoptera"
+            },
+            {
+                "triple": "(genus amorphophallus, member meronym, ?)",
+                "drkgc_pred": "umbrella arum",
+                "extract_pred": "wonder bean",
+                "target": "umbrella arum"
+            },
+            {
+                "triple": "(viverrinae, member meronym, ?)",
+                "drkgc_pred": "genus fossa",
+                "extract_pred": "mongoose",
+                "target": "genus fossa"
+            },
+            {
+                "triple": "(order isoptera, member meronym, ?)",
+                "drkgc_pred": "mastotermitidae",
+                "extract_pred": "legionary ant",
+                "target": "mastotermitidae"
+            },
+            {
+                "triple": "(war machine, member meronym, ?)",
+                "drkgc_pred": "war machine",
+                "extract_pred": "airforce",
+                "target": "war machine"
+            },
+            {
+                "triple": "(saxifraga, member meronym, ?)",
+                "drkgc_pred": "saxifrage",
+                "extract_pred": "saxifraga",
+                "target": "saxifrage"
+            },
+            {
+                "triple": "(family cactaceae, member meronym, ?)",
+                "drkgc_pred": "pediocactus",
+                "extract_pred": "genus calandrinia",
+                "target": "pediocactus"
+            },
+            {
+                "triple": "(genus artocarpus, member meronym, ?)",
+                "drkgc_pred": "marang tree",
+                "extract_pred": "loquat tree",
+                "target": "marang tree"
+            },
+            {
+                "triple": "(phleum, member meronym, ?)",
+                "drkgc_pred": "phleum",
+                "extract_pred": "genus calamagrostis",
+                "target": "phleum"
+            },
+            {
+                "triple": "(family accipitridae, member meronym, ?)",
+                "drkgc_pred": "gyps",
+                "extract_pred": "genus falco",
+                "target": "gyps"
+            },
+            {
+                "triple": "(palaemon, member meronym, ?)",
+                "drkgc_pred": "prawn",
+                "extract_pred": "old world crayfish",
+                "target": "prawn"
+            },
+            {
+                "triple": "(genus crataegus, member meronym, ?)",
+                "drkgc_pred": "summer haw",
+                "extract_pred": "sweet elder",
+                "target": "summer haw"
+            },
+            {
+                "triple": "(sterculiaceae, member meronym, ?)",
+                "drkgc_pred": "sterculiaceae",
+                "extract_pred": "st john's wort family",
+                "target": "sterculiaceae"
+            },
+            {
+                "triple": "(genus alnus, member meronym, ?)",
+                "drkgc_pred": "red alder",
+                "extract_pred": "white alder",
+                "target": "red alder"
+            },
+            {
+                "triple": "(family elaeocarpaceae, member meronym, ?)",
+                "drkgc_pred": "family elaeocarpaceae",
+                "extract_pred": "st john's wort family",
+                "target": "family elaeocarpaceae"
+            },
+            {
+                "triple": "(order malvales, member meronym, ?)",
+                "drkgc_pred": "family elaeocarpaceae",
+                "extract_pred": "st john's wort family",
+                "target": "family elaeocarpaceae"
+            },
+            {
+                "triple": "(lily family, member meronym, ?)",
+                "drkgc_pred": "liriope",
+                "extract_pred": "lily",
+                "target": "liriope"
+            },
+            {
+                "triple": "(family dermestidae, member meronym, ?)",
+                "drkgc_pred": "carpet bug",
+                "extract_pred": "sawyer beetle",
+                "target": "carpet bug"
+            },
+            {
+                "triple": "(genus blatta, member meronym, ?)",
+                "drkgc_pred": "oriental roach",
+                "extract_pred": "sheep tick",
+                "target": "oriental roach"
+            },
+            {
+                "triple": "(family agonidae, member meronym, ?)",
+                "drkgc_pred": "family agonidae",
+                "extract_pred": "genus aspidophoroides",
+                "target": "family agonidae"
+            },
+            {
+                "triple": "(hebrew script, member meronym, ?)",
+                "drkgc_pred": "aleph",
+                "extract_pred": "resh",
+                "target": "aleph"
+            },
+            {
+                "triple": "(subfamily papilionoideae, member meronym, ?)",
+                "drkgc_pred": "spartium",
+                "extract_pred": "medicago",
+                "target": "spartium"
+            },
+            {
+                "triple": "(zaglossus, member meronym, ?)",
+                "drkgc_pred": "spiny anteater",
+                "extract_pred": "numbat",
+                "target": "spiny anteater"
+            }
+        ],
+        "only_extract": [
+            {
+                "triple": "(monodontidae, member meronym, ?)",
+                "drkgc_pred": "narwhale",
+                "extract_pred": "genus delphinapterus",
+                "target": "genus delphinapterus"
+            },
+            {
+                "triple": "(genus citrullus, member meronym, ?)",
+                "drkgc_pred": "genus cucurbita",
+                "extract_pred": "genus citrullus",
+                "target": "genus citrullus"
+            },
+            {
+                "triple": "(genus dacrydium, member meronym, ?)",
+                "drkgc_pred": "halocarpus",
+                "extract_pred": "genus dacrydium",
+                "target": "genus dacrydium"
+            },
+            {
+                "triple": "(order coleoptera, member meronym, ?)",
+                "drkgc_pred": "lamellicorn beetle",
+                "extract_pred": "family cerambycidae",
+                "target": "family cerambycidae"
+            },
+            {
+                "triple": "(phleum, member meronym, ?)",
+                "drkgc_pred": "ribbon grass",
+                "extract_pred": "timothy",
+                "target": "timothy"
+            },
+            {
+                "triple": "(podocarpus family, member meronym, ?)",
+                "drkgc_pred": "yacca podocarp",
+                "extract_pred": "genus afrocarpus",
+                "target": "genus afrocarpus"
+            },
+            {
+                "triple": "(olive family, member meronym, ?)",
+                "drkgc_pred": "nerium",
+                "extract_pred": "syringa",
+                "target": "syringa"
+            },
+            {
+                "triple": "(lily family, member meronym, ?)",
+                "drkgc_pred": "lily",
+                "extract_pred": "xanthorrhoeaceae",
+                "target": "xanthorrhoeaceae"
+            },
+            {
+                "triple": "(suborder sauropoda, member meronym, ?)",
+                "drkgc_pred": "titanosaurus",
+                "extract_pred": "titanosauridae",
+                "target": "titanosauridae"
+            },
+            {
+                "triple": "(phasmida, member meronym, ?)",
+                "drkgc_pred": "walkingstick",
+                "extract_pred": "phyllidae",
+                "target": "phyllidae"
+            },
+            {
+                "triple": "(plantagenet line, member meronym, ?)",
+                "drkgc_pred": "henry iv",
+                "extract_pred": "richard the lionheart",
+                "target": "richard the lionheart"
+            },
+            {
+                "triple": "(filicopsida, member meronym, ?)",
+                "drkgc_pred": "order marattiales",
+                "extract_pred": "filicopsida",
+                "target": "filicopsida"
+            },
+            {
+                "triple": "(subfamily papilionoideae, member meronym, ?)",
+                "drkgc_pred": "genus acacia",
+                "extract_pred": "vigna",
+                "target": "vigna"
+            },
+            {
+                "triple": "(temporalty, member meronym, ?)",
+                "drkgc_pred": "gentile",
+                "extract_pred": "secular",
+                "target": "secular"
+            },
+            {
+                "triple": "(orthoptera, member meronym, ?)",
+                "drkgc_pred": "cricket",
+                "extract_pred": "tettigoniidae",
+                "target": "tettigoniidae"
+            },
+            {
+                "triple": "(hylidae, member meronym, ?)",
+                "drkgc_pred": "ranidae",
+                "extract_pred": "hylidae",
+                "target": "hylidae"
+            },
+            {
+                "triple": "(lamnidae, member meronym, ?)",
+                "drkgc_pred": "family cetorhinidae",
+                "extract_pred": "lamnidae",
+                "target": "lamnidae"
+            },
+            {
+                "triple": "(carthage, member meronym, ?)",
+                "drkgc_pred": "phoenicia",
+                "extract_pred": "carthage",
+                "target": "carthage"
+            },
+            {
+                "triple": "(ranunculaceae, member meronym, ?)",
+                "drkgc_pred": "family berberidaceae",
+                "extract_pred": "ranunculaceae",
+                "target": "ranunculaceae"
+            },
+            {
+                "triple": "(family cyprinidae, member meronym, ?)",
+                "drkgc_pred": "crucian carp",
+                "extract_pred": "genus abramis",
+                "target": "genus abramis"
+            },
+            {
+                "triple": "(subclass crossopterygii, member meronym, ?)",
+                "drkgc_pred": "order cypriniformes",
+                "extract_pred": "subclass crossopterygii",
+                "target": "subclass crossopterygii"
+            },
+            {
+                "triple": "(superfamily coccoidea, member meronym, ?)",
+                "drkgc_pred": "scale insect",
+                "extract_pred": "pseudococcidae",
+                "target": "pseudococcidae"
+            },
+            {
+                "triple": "(magnoliaceae, member meronym, ?)",
+                "drkgc_pred": "family annonaceae",
+                "extract_pred": "magnoliaceae",
+                "target": "magnoliaceae"
+            },
+            {
+                "triple": "(sainthood, member meronym, ?)",
+                "drkgc_pred": "patron saint",
+                "extract_pred": "saint",
+                "target": "saint"
+            },
+            {
+                "triple": "(order chiroptera, member meronym, ?)",
+                "drkgc_pred": "microbat",
+                "extract_pred": "suborder microchiroptera",
+                "target": "suborder microchiroptera"
+            },
+            {
+                "triple": "(ranunculaceae, member meronym, ?)",
+                "drkgc_pred": "family berberidaceae",
+                "extract_pred": "ranunculaceae",
+                "target": "ranunculaceae"
+            },
+            {
+                "triple": "(heath family, member meronym, ?)",
+                "drkgc_pred": "lavatera",
+                "extract_pred": "genus cassiope",
+                "target": "genus cassiope"
+            },
+            {
+                "triple": "(family dasypodidae, member meronym, ?)",
+                "drkgc_pred": "texas armadillo",
+                "extract_pred": "genus cabassous",
+                "target": "genus cabassous"
+            },
+            {
+                "triple": "(hydrozoa, member meronym, ?)",
+                "drkgc_pred": "phylum coelenterata",
+                "extract_pred": "hydrozoa",
+                "target": "hydrozoa"
+            },
+            {
+                "triple": "(phaeophyta, member meronym, ?)",
+                "drkgc_pred": "brown algae",
+                "extract_pred": "phaeophyceae",
+                "target": "phaeophyceae"
+            },
+            {
+                "triple": "(felidae, member meronym, ?)",
+                "drkgc_pred": "true cat",
+                "extract_pred": "panthera",
+                "target": "panthera"
+            },
+            {
+                "triple": "(sainthood, member meronym, ?)",
+                "drkgc_pred": "church",
+                "extract_pred": "sainthood",
+                "target": "sainthood"
+            },
+            {
+                "triple": "(european union, member meronym, ?)",
+                "drkgc_pred": "republic of bulgaria",
+                "extract_pred": "kingdom of denmark",
+                "target": "kingdom of denmark"
+            },
+            {
+                "triple": "(woods, member meronym, ?)",
+                "drkgc_pred": "thicket",
+                "extract_pred": "woods",
+                "target": "woods"
+            },
+            {
+                "triple": "(family compositae, member meronym, ?)",
+                "drkgc_pred": "plumed thistle",
+                "extract_pred": "parthenium",
+                "target": "parthenium"
+            },
+            {
+                "triple": "(palaemon, member meronym, ?)",
+                "drkgc_pred": "palaemonidae",
+                "extract_pred": "palaemon",
+                "target": "palaemon"
+            },
+            {
+                "triple": "(polynesia, member meronym, ?)",
+                "drkgc_pred": "tonga",
+                "extract_pred": "polynesian",
+                "target": "polynesian"
+            },
+            {
+                "triple": "(family characidae, member meronym, ?)",
+                "drkgc_pred": "paracheirodon axelrodi",
+                "extract_pred": "serrasalmus",
+                "target": "serrasalmus"
+            },
+            {
+                "triple": "(mustard family, member meronym, ?)",
+                "drkgc_pred": "turritis glabra",
+                "extract_pred": "genus crambe",
+                "target": "genus crambe"
+            }
+        ]
+    },
+    "instance hypernym": {
+        "only_drkgc": [
+            {
+                "triple": "(tirich mir, instance hypernym, ?)",
+                "drkgc_pred": "tirich mir",
+                "extract_pred": "pico de orizaba",
+                "target": "tirich mir"
+            },
+            {
+                "triple": "(iron age, instance hypernym, ?)",
+                "drkgc_pred": "iron age",
+                "extract_pred": "recent epoch",
+                "target": "iron age"
+            },
+            {
+                "triple": "(nan ling, instance hypernym, ?)",
+                "drkgc_pred": "nan ling",
+                "extract_pred": "rocky mountains",
+                "target": "nan ling"
+            },
+            {
+                "triple": "(marne river, instance hypernym, ?)",
+                "drkgc_pred": "marne river",
+                "extract_pred": "battle of britain",
+                "target": "marne river"
+            },
+            {
+                "triple": "(volcano islands, instance hypernym, ?)",
+                "drkgc_pred": "volcano islands",
+                "extract_pred": "canary islands",
+                "target": "volcano islands"
+            },
+            {
+                "triple": "(giuseppe balsamo, instance hypernym, ?)",
+                "drkgc_pred": "giuseppe balsamo",
+                "extract_pred": "enchanter",
+                "target": "giuseppe balsamo"
+            }
+        ],
+        "only_extract": [
+            {
+                "triple": "(giuseppe balsamo, instance hypernym, ?)",
+                "drkgc_pred": "occultist",
+                "extract_pred": "wizard",
+                "target": "wizard"
+            },
+            {
+                "triple": "(north platte river, instance hypernym, ?)",
+                "drkgc_pred": "bull run",
+                "extract_pred": "north platte river",
+                "target": "north platte river"
+            },
+            {
+                "triple": "(south korea, instance hypernym, ?)",
+                "drkgc_pred": "republic of indonesia",
+                "extract_pred": "south korea",
+                "target": "south korea"
+            },
+            {
+                "triple": "(aegean sea, instance hypernym, ?)",
+                "drkgc_pred": "persian gulf",
+                "extract_pred": "aegean sea",
+                "target": "aegean sea"
+            },
+            {
+                "triple": "(leyden, instance hypernym, ?)",
+                "drkgc_pred": "caesarea",
+                "extract_pred": "leyden",
+                "target": "leyden"
+            },
+            {
+                "triple": "(mississippi river, instance hypernym, ?)",
+                "drkgc_pred": "bull run",
+                "extract_pred": "mississippi river",
+                "target": "mississippi river"
+            },
+            {
+                "triple": "(kobenhavn, instance hypernym, ?)",
+                "drkgc_pred": "almaty",
+                "extract_pred": "kobenhavn",
+                "target": "kobenhavn"
+            },
+            {
+                "triple": "(helsinki, instance hypernym, ?)",
+                "drkgc_pred": "almaty",
+                "extract_pred": "helsinki",
+                "target": "helsinki"
+            }
+        ]
+    },
+    "verb group": {
+        "only_drkgc": [
+            {
+                "triple": "(take on, verb group, ?)",
+                "drkgc_pred": "take on",
+                "extract_pred": "play",
+                "target": "take on"
+            }
+        ],
+        "only_extract": [
+            {
+                "triple": "(develop, verb group, ?)",
+                "drkgc_pred": "germinate",
+                "extract_pred": "formulate",
+                "target": "formulate"
+            },
+            {
+                "triple": "(scratch, verb group, ?)",
+                "drkgc_pred": "strike",
+                "extract_pred": "scratch",
+                "target": "scratch"
+            },
+            {
+                "triple": "(shoot, verb group, ?)",
+                "drkgc_pred": "stick in",
+                "extract_pred": "shoot",
+                "target": "shoot"
+            }
+        ]
+    },
+    "member of domain usage": {
+        "only_drkgc": [
+            {
+                "triple": "(trade name, member of domain usage, ?)",
+                "drkgc_pred": "trade name",
+                "extract_pred": "calcium blocker",
+                "target": "trade name"
+            },
+            {
+                "triple": "(trade name, member of domain usage, ?)",
+                "drkgc_pred": "verapamil",
+                "extract_pred": "nitrostat",
+                "target": "verapamil"
+            },
+            {
+                "triple": "(trade name, member of domain usage, ?)",
+                "drkgc_pred": "lanoxin",
+                "extract_pred": "nitrostat",
+                "target": "lanoxin"
+            },
+            {
+                "triple": "(trade name, member of domain usage, ?)",
+                "drkgc_pred": "valium",
+                "extract_pred": "nitrostat",
+                "target": "valium"
+            }
+        ],
+        "only_extract": [
+            {
+                "triple": "(vernacular, member of domain usage, ?)",
+                "drkgc_pred": "colloquialism",
+                "extract_pred": "vernacular",
+                "target": "vernacular"
+            },
+            {
+                "triple": "(euphemism, member of domain usage, ?)",
+                "drkgc_pred": "synecdoche",
+                "extract_pred": "euphemism",
+                "target": "euphemism"
+            }
+        ]
+    },
+    "synset domain topic of": {
+        "only_drkgc": [
+            {
+                "triple": "(naval commander, synset domain topic of, ?)",
+                "drkgc_pred": "naval commander",
+                "extract_pred": "battery",
+                "target": "naval commander"
+            },
+            {
+                "triple": "(dysfunction, synset domain topic of, ?)",
+                "drkgc_pred": "dysfunction",
+                "extract_pred": "shot",
+                "target": "dysfunction"
+            },
+            {
+                "triple": "(charcoal, synset domain topic of, ?)",
+                "drkgc_pred": "charcoal",
+                "extract_pred": "draw",
+                "target": "charcoal"
+            },
+            {
+                "triple": "(nurse, synset domain topic of, ?)",
+                "drkgc_pred": "nurse",
+                "extract_pred": "medical",
+                "target": "nurse"
+            },
+            {
+                "triple": "(throughput, synset domain topic of, ?)",
+                "drkgc_pred": "information processing system",
+                "extract_pred": "computing",
+                "target": "information processing system"
+            },
+            {
+                "triple": "(fugacity, synset domain topic of, ?)",
+                "drkgc_pred": "fugacity",
+                "extract_pred": "vegetation",
+                "target": "fugacity"
+            }
+        ],
+        "only_extract": [
+            {
+                "triple": "(hizb ut-tahrir, synset domain topic of, ?)",
+                "drkgc_pred": "asia",
+                "extract_pred": "terrorist act",
+                "target": "terrorist act"
+            },
+            {
+                "triple": "(assist, synset domain topic of, ?)",
+                "drkgc_pred": "hockey",
+                "extract_pred": "ice hockey",
+                "target": "ice hockey"
+            },
+            {
+                "triple": "(multivariate analysis, synset domain topic of, ?)",
+                "drkgc_pred": "statistical procedure",
+                "extract_pred": "statistics",
+                "target": "statistics"
+            },
+            {
+                "triple": "(fire, synset domain topic of, ?)",
+                "drkgc_pred": "woodworking",
+                "extract_pred": "preparation",
+                "target": "preparation"
+            },
+            {
+                "triple": "(draw, synset domain topic of, ?)",
+                "drkgc_pred": "etch",
+                "extract_pred": "draw",
+                "target": "draw"
+            },
+            {
+                "triple": "(amniotic sac, synset domain topic of, ?)",
+                "drkgc_pred": "amniote",
+                "extract_pred": "mammalian",
+                "target": "mammalian"
+            },
+            {
+                "triple": "(fisherman's lure, synset domain topic of, ?)",
+                "drkgc_pred": "sportfishing",
+                "extract_pred": "angling",
+                "target": "angling"
+            }
+        ]
+    },
+    "also see": {
+        "only_drkgc": [
+            {
+                "triple": "(wreak, also see, ?)",
+                "drkgc_pred": "wreak",
+                "extract_pred": "stir",
+                "target": "wreak"
+            },
+            {
+                "triple": "(inclement, also see, ?)",
+                "drkgc_pred": "inclement",
+                "extract_pred": "uncompromising",
+                "target": "inclement"
+            },
+            {
+                "triple": "(uncertain, also see, ?)",
+                "drkgc_pred": "uncertain",
+                "extract_pred": "unstable",
+                "target": "uncertain"
+            },
+            {
+                "triple": "(insufficient, also see, ?)",
+                "drkgc_pred": "insufficient",
+                "extract_pred": "lean",
+                "target": "insufficient"
+            }
+        ],
+        "only_extract": [
+            {
+                "triple": "(bold, also see, ?)",
+                "drkgc_pred": "plucky",
+                "extract_pred": "courageous",
+                "target": "courageous"
+            },
+            {
+                "triple": "(bold, also see, ?)",
+                "drkgc_pred": "plucky",
+                "extract_pred": "bold",
+                "target": "bold"
+            },
+            {
+                "triple": "(passionate, also see, ?)",
+                "drkgc_pred": "warm",
+                "extract_pred": "passionate",
+                "target": "passionate"
+            },
+            {
+                "triple": "(unsociable, also see, ?)",
+                "drkgc_pred": "intractable",
+                "extract_pred": "unsociable",
+                "target": "unsociable"
+            }
+        ]
+    },
+    "member of domain region": {
+        "only_drkgc": [
+            {
+                "triple": "(hellenic republic, member of domain region, ?)",
+                "drkgc_pred": "hellenic republic",
+                "extract_pred": "rome",
+                "target": "hellenic republic"
+            }
+        ],
+        "only_extract": [
+            {
+                "triple": "(united kingdom of great britain and northern ireland, member of domain region, ?)",
+                "drkgc_pred": "mackintosh",
+                "extract_pred": "facer",
+                "target": "facer"
+            }
+        ]
+    },
+    "similar to": {
+        "only_drkgc": [],
+        "only_extract": [
+            {
+                "triple": "(clean, similar to, ?)",
+                "drkgc_pred": "tidy",
+                "extract_pred": "rigidify",
+                "target": "rigidify"
+            }
+        ]
+    }
+}
