@@ -116,13 +116,13 @@ class Evaluator:
 
 
 if __name__ == '__main__':
-    set_seed(3407)
+    #set_seed(3407)
     
     hfparser = HfArgumentParser((Arguments, GenerationArguments))
     (data_args, generation_args, _) = hfparser.parse_args_into_dataclasses(return_remaining_strings=True)
     generation_config = GenerationConfig(**vars(generation_args))
     args = argparse.Namespace(**vars(data_args))
-
+    set_seed(args.seed)
     wandb.init(
         project="DrKGC-Experiments", 
         name=f"Eval-{os.path.basename(args.checkpoint_dir)}", # 예: Eval-checkpoint-final

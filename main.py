@@ -149,8 +149,7 @@ class SavePeftModelCallback(transformers.TrainerCallback):
 
 
 def train():
-    set_seed(3407)
-
+    #set_seed(3407)
     hfparser = HfArgumentParser((Arguments, FinetuningArguments, GenerationArguments))
     try:
         data_args, training_args, generation_args, _ = hfparser.parse_args_into_dataclasses(return_remaining_strings=True)
@@ -158,7 +157,7 @@ def train():
         data_args, training_args, generation_args = hfparser.parse_args_into_dataclasses(return_remaining_strings=False)
     training_args.generation_config = GenerationConfig(**vars(generation_args))
     args = argparse.Namespace(**vars(data_args), **vars(training_args))
-
+    set_seed(args.seed)
     os.makedirs(args.output_dir, exist_ok=True)
     
     print(f"Load LLM: {args.model_name_or_path}")
@@ -187,9 +186,9 @@ def train():
             raise ValueError(f"Unsupported dataset: {dataset_name}. Supported datasets: {list(DATASET_METADATA.keys())}")
         E_dim = DATASET_METADATA[dataset_name]["E_dim"]
         R_dim = DATASET_METADATA[dataset_name]["R_dim"]
-        extract_model = KG_extract(model.config.hidden_size, E_dim, R_dim, args.per_device_train_batch_size, args.extract_loss_weight)
+        extract_model = KG_extract(model.config.hidden_size, E_dim, R_dim, args.per_device_train_batch_size, args.include_subgraph)
         extract_model = extract_model.to(torch.bfloat16)
-        model = DrKGC_extract(tokenizer, model, embed_model, extract_model)
+        model = DrKGC_extract(tokenizer, model, embed_model, extract_model, args.extract_loss_weight)
         data_module = make_data_module_extract(args, tokenizer) 
     else:
         model = DrKGC(tokenizer, model, embed_model)

@@ -62,7 +62,7 @@ class DrKGC(nn.Module):
         )    
 
 class DrKGC_extract(DrKGC):
-    def __init__(self, tokenizer, llm_model, graph_model, extract_model, extract_loss_weight=1.0):
+    def __init__(self, tokenizer, llm_model, graph_model, extract_model, extract_loss_weight):
         super().__init__(tokenizer, llm_model, graph_model)
         self.extract_model = extract_model
         self.extract_id = self.tokenizer.convert_tokens_to_ids(['<|extract_kg|>'])[0]

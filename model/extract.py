@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import math
 
 class KG_extract(nn.Module):
-    def __init__(self, hidden_dim, E_dim, R_dim, batch_size, include_subgraph=True, tau=0.05):
+    def __init__(self, hidden_dim, E_dim, R_dim, batch_size, include_subgraph, tau=0.05):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.E_dim = E_dim
@@ -144,7 +144,7 @@ class KG_extract(nn.Module):
             sub_h_idx, sub_r_idx, sub_t_idx = [], [], []
             
             # 해당 배치의 서브그래프 트리플 정보 추출
-            if subgraphs[b] is None or len(subgraphs[b]) == 0:
+            if subgraphs is not None and len(subgraphs) > b and subgraphs[b]:
                 for triple in subgraphs[b]:
                     if len(triple) == 3:
                         sub_h_idx.append(triple[0])
@@ -196,7 +196,7 @@ class KG_extract(nn.Module):
         #reconstruction_loss
         x_reconstruct = h_recon + r_recon + t_recon
         reconstruction_loss = self.cal_reconstruction_loss(x_reconstruct, x)
-        breakpoint()
+        
         if self.include_subgraph:
             label_loss = self.cal_label_loss_wsubgraph(h_logits, r_logits, t_logits, entity_ids, triple_ids, is_predicted_tail, subgraph)
             kgc_loss = self.cal_kgc_loss_wsubgraph(triple_ids, subgraph)
