@@ -2,10 +2,41 @@ from pathlib import Path
 import numpy as np
 import torch
 from torch import nn
-from transformers import GenerationConfig
+from transformers import GenerationConfig, Seq2SeqTrainer
 
-__all__ = ["DrKGC", "DrKGC_extract"]
+__all__ = ["DrKGC", "DrKGC_extract", "CustomTrainer"]
 
+from transformers import Seq2SeqTrainer
+
+class CustomTrainer(Seq2SeqTrainer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.custom_loss_dict = {
+            "lm_loss": 0.0, 
+            "label_loss": 0.0, 
+            "reconstruction_loss": 0.0, 
+            "kgc_loss": 0.0
+        }
+        self.custom_loss_steps = 0
+
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        loss, outputs = super().compute_loss(model, inputs, return_outputs=True, **kwargs)
+        if self.model.training and isinstance(outputs, dict):
+            for key in self.custom_loss_dict.keys():
+                val = outputs.get(key)
+                if val is not None:
+                    # 텐서면 .item()으로 스칼라 변환, 파이썬 숫자면 그대로 누적
+                    self.custom_loss_dict[key] += val.item() if hasattr(val, "item") else val
+            self.custom_loss_steps += 1
+        return (loss, outputs) if return_outputs else loss
+
+    def log(self, logs: dict):
+        if self.custom_loss_steps > 0:
+            for key in self.custom_loss_dict:
+                logs[key] = self.custom_loss_dict[key] / self.custom_loss_steps
+                self.custom_loss_dict[key] = 0.0
+            self.custom_loss_steps = 0
+        super().log(logs)
 
 class DrKGC(nn.Module):
     def __init__(self, tokenizer, llm_model, graph_model):
@@ -62,11 +93,12 @@ class DrKGC(nn.Module):
         )    
 
 class DrKGC_extract(DrKGC):
-    def __init__(self, tokenizer, llm_model, graph_model, extract_model, extract_loss_weight):
+    def __init__(self, tokenizer, llm_model, graph_model, extract_model, extract_loss_weight, use_attention):
         super().__init__(tokenizer, llm_model, graph_model)
         self.extract_model = extract_model
         self.extract_id = self.tokenizer.convert_tokens_to_ids(['<|extract_kg|>'])[0]
         self.extract_loss_weight = extract_loss_weight
+        self.use_attention = use_attention
 
     def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail):
         inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
@@ -81,9 +113,20 @@ class DrKGC_extract(DrKGC):
         extract_pos = torch.nonzero(input_ids == self.extract_id, as_tuple=False)
         if extract_pos.numel() == 0:
             raise ValueError("No extract token '<|extract_kg|>' found in input_ids for DrKGC_extract.")
-        x = last_hidden_state[extract_pos[:,0], extract_pos[:,1]]
-        extract_loss = self.extract_model(x, query_ids, entity_ids, triple_ids, is_predicted_tail, subgraph)
-        outputs.loss = outputs.loss + extract_loss * self.extract_loss_weight
+        if self.use_attention:
+            max_pos = extract_pos[:, 1].max().item()
+            x = last_hidden_state[:, :max_pos + 1, :]
+            attn_mask = attention_mask[:, :max_pos + 1]
+        else:
+            x = last_hidden_state[extract_pos[:,0], extract_pos[:,1]]
+            attn_mask = None
+        extract_outputs = self.extract_model(x, extract_pos, attn_mask, query_ids, entity_ids, triple_ids, is_predicted_tail, subgraph)
+        lm_loss = outputs.loss
+        outputs.loss = lm_loss + (extract_outputs["total_loss"] * self.extract_loss_weight)
+        outputs["lm_loss"] = lm_loss
+        outputs["reconstruction_loss"] = extract_outputs["reconstruction_loss"]
+        outputs["label_loss"] = extract_outputs["label_loss"]
+        outputs["kgc_loss"] = extract_outputs["kgc_loss"]
         return outputs
 
     def save_pretrained(self, save_dir):

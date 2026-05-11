@@ -17,10 +17,14 @@ class Arguments:
     target_max_len: int = field(default=64, metadata={"help": "Maximum target sequence length."},)
     
     checkpoint_dir: str = field(default=None, metadata={"help": "Checkpoint saveing directory"})
-    use_extract: bool = field(default=False, metadata={"help":"True for using extract model"})
-    include_subgraph: bool = field(default=True)
-    extract_loss_weight: float = field(default=1.0)
-    seed: int = field(default=3407, metadata={"help":"seed number"})
+    use_extract: bool = field(default=False, metadata={"help":"True for using extract model"}) #main.py
+    include_subgraph: bool = field(default=True) #main.py, extract.py
+    use_margin_loss: bool = field(default=True) #main.py, extract.py
+    use_attention: bool = field(default=False) #main.py, extract.py
+    use_topk: bool = field(default=False) #main.py, extract.py
+    extract_loss_weight: float = field(default=1.0) #main.py, drkgc.py
+    seed_num: int = field(default=3407, metadata={"help":"seed number"}) #main.py
+    use_wandb: bool = field(default=False) #main.py
 
 @dataclass
 class FinetuningArguments(Seq2SeqTrainingArguments):
@@ -51,7 +55,7 @@ class FinetuningArguments(Seq2SeqTrainingArguments):
         metadata={"help": "WandB에 기록될 실험(Run)의 이름입니다."}
     )
     report_to: Optional[str] = field(
-        default="wandb",
+        default="none",
         metadata={"help": "로그를 어디에 기록할지 설정합니다."}
     )
 

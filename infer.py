@@ -31,11 +31,7 @@ torch.cuda.empty_cache()
 import wandb
 from dotenv import load_dotenv
 load_dotenv()
-wandb_api_key = os.environ.get("WANDB_API_KEY")
-if wandb_api_key:
-    wandb.login(key=wandb_api_key)
-else:
-    print("⚠️ WANDB_API_KEY가 없습니다. WandB 로깅이 비활성화될 수 있습니다.")
+
 
 class Evaluator:
     def __init__(self, args, tokenizer, model, data_module, generation_config):
@@ -122,12 +118,18 @@ if __name__ == '__main__':
     (data_args, generation_args, _) = hfparser.parse_args_into_dataclasses(return_remaining_strings=True)
     generation_config = GenerationConfig(**vars(generation_args))
     args = argparse.Namespace(**vars(data_args))
-    set_seed(args.seed)
-    wandb.init(
-        project="DrKGC-Experiments", 
-        name=f"Eval-{os.path.basename(args.checkpoint_dir)}", # 예: Eval-checkpoint-final
-        config=vars(args) # 하이퍼파라미터도 같이 저장
-    )
+    set_seed(args.seed_num)
+    if args.use_wandb:
+        wandb_api_key = os.environ.get("WANDB_API_KEY")
+        if wandb_api_key:
+            wandb.login(key=wandb_api_key)
+            wandb.init(
+                project="DrKGC-Experiments", 
+                name=f"Eval-{os.path.basename(args.checkpoint_dir)}", # 예: Eval-checkpoint-final
+                config=vars(args) # 하이퍼파라미터도 같이 저장
+            )
+        else:
+            print("⚠️ WANDB_API_KEY가 없습니다. WandB 로깅이 비활성화될 수 있습니다.")
 
     print(f"Load LLM: {args.model_name_or_path}")
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=False)
@@ -173,4 +175,5 @@ if __name__ == '__main__':
     }
     output_path = os.path.join(os.path.dirname(args.checkpoint_dir), f'prediction.json')
     json.dump(output, open(output_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
-    wandb.finish()
+    if args.use_wandb:
+        wandb.finish()

@@ -4,25 +4,70 @@ import torch.nn.functional as F
 import math
 
 class KG_extract(nn.Module):
-    def __init__(self, hidden_dim, E_dim, R_dim, batch_size, include_subgraph, tau=0.05):
+    def __init__(self, hidden_dim, E_dim, R_dim, batch_size, include_subgraph, use_margin_loss, use_attention, use_topk, internal_dim=512, tau=0.05):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.E_dim = E_dim
         self.R_dim = R_dim
         self.batch_size = batch_size
-        self.W_enc_h = nn.Linear(self.hidden_dim, self.E_dim)
-        self.W_enc_r = nn.Linear(self.hidden_dim, self.R_dim)
-        self.W_enc_t = nn.Linear(self.hidden_dim, self.E_dim)
-        self.W_dec_h = nn.Linear(self.E_dim, self.hidden_dim)
-        self.W_dec_r = nn.Linear(self.R_dim, self.hidden_dim)
-        self.W_dec_t = nn.Linear(self.E_dim, self.hidden_dim)
-        init_val = 1.0 / tau
-        inv_softplus_init = math.log(math.exp(init_val) - 1.0) if init_val < 20.0 else init_val
-        self.inv_t_param = nn.Parameter(torch.tensor(inv_softplus_init))
+        self.W_dec_h = nn.Linear(self.E_dim, self.hidden_dim, bias=False)
+        self.W_dec_r = nn.Linear(self.R_dim, self.hidden_dim, bias=False)
+        self.W_dec_t = nn.Linear(self.E_dim, self.hidden_dim, bias=False)
+        self.W_enc_h = nn.Linear(self.hidden_dim, self.E_dim, bias=True)
+        self.W_enc_r = nn.Linear(self.hidden_dim, self.R_dim, bias=True)
+        self.W_enc_t = nn.Linear(self.hidden_dim, self.E_dim, bias=True)
+        self._initialize_sae_weights()
+        self.use_margin_loss = use_margin_loss
+        self.use_attention = use_attention
+        if self.use_attention:
+            self.internal_dim = internal_dim
+            self.W_q = nn.Linear(self.hidden_dim, self.internal_dim, bias=False)
+            self.W_k = nn.Linear(self.hidden_dim, self.internal_dim, bias=False)
+            self.W_v = nn.Linear(self.hidden_dim, self.internal_dim, bias=False)
+            self.W_o = nn.Linear(self.internal_dim, self.hidden_dim, bias=False)
+        if self.use_margin_loss:
+            # margin_loss로 계산할 때 아래와 같은 임베딩 사용.
+            self.epsilon = 2.0
+            self.gamma = nn.Parameter(torch.Tensor([9]), requires_grad=False)
+            self.embedding_range = nn.Parameter(
+                torch.Tensor([(self.gamma.item() + self.epsilon) / self.hidden_dim]), 
+                requires_grad=False
+            )
+            self.entity_embedding = nn.Parameter(torch.zeros(self.E_dim, self.hidden_dim))
+            nn.init.uniform_(
+                tensor=self.entity_embedding, 
+                a=-self.embedding_range.item(), 
+                b=self.embedding_range.item()
+            )
+            
+            self.relation_embedding = nn.Parameter(torch.zeros(self.R_dim, self.hidden_dim))
+            nn.init.uniform_(
+                tensor=self.relation_embedding, 
+                a=-self.embedding_range.item(), 
+                b=self.embedding_range.item()
+            )
+        else:
+            init_val = 1.0 / tau
+            inv_softplus_init = math.log(math.exp(init_val) - 1.0) if init_val < 20.0 else init_val
+            self.inv_t_param = nn.Parameter(torch.tensor(inv_softplus_init))
         self.register_buffer("dead_h", torch.zeros(self.E_dim))
         self.register_buffer("dead_r", torch.zeros(self.R_dim))
         self.register_buffer("dead_t", torch.zeros(self.E_dim))
         self.include_subgraph = include_subgraph
+        self.label_loss_weight = True ## 수정가능
+        self.K_E = 32 ## 수정가능
+        self.K_R = 1 ## 수정가능 
+        self.use_top_k = use_topk ## 수정가능
+        self.use_in_batch_negative = True ## 수정가능 
+
+    def _initialize_sae_weights(self):
+        with torch.no_grad():
+            self.W_dec_h.weight.data = F.normalize(self.W_dec_h.weight.data, p=2, dim=0)
+            self.W_dec_r.weight.data = F.normalize(self.W_dec_r.weight.data, p=2, dim=0)
+            self.W_dec_t.weight.data = F.normalize(self.W_dec_t.weight.data, p=2, dim=0)
+            self.W_enc_h.weight.data = self.W_dec_h.weight.data.clone().t()
+            self.W_enc_r.weight.data = self.W_dec_r.weight.data.clone().t()
+            self.W_enc_t.weight.data = self.W_dec_t.weight.data.clone().t()
 
     def cal_reconstruction_loss(self, x_reconstruct, x):
         recon_loss = F.mse_loss(x_reconstruct, x)
@@ -36,11 +81,28 @@ class KG_extract(nn.Module):
         is_tail = is_predicted_tail.unsqueeze(1)
         final_h_target = torch.where(is_tail, h_target, cand_target)
         final_t_target = torch.where(is_tail, cand_target, t_target)
-        loss_bce = (
-            F.binary_cross_entropy_with_logits(h_logits, final_h_target) +
-            F.binary_cross_entropy_with_logits(r_logits, r_target) +
-            F.binary_cross_entropy_with_logits(t_logits, final_t_target)
-        )
+        # 동적으로 가중치 계산 (배치 내 불균형도 반영)
+        def get_pos_weight(target_tensor):
+            num_pos = target_tensor.sum() # 1의 개수
+            num_neg = target_tensor.numel() - num_pos # 0의 개수
+            weight = (num_neg / torch.clamp(num_pos, min=1.0)) # 0으로 나누는 것 방지, clamp 적용
+            return torch.clamp(weight, max=100.0) # 너무 큰 가중치로 로스가 폭발하는 것 방지 (예: 최대 200배까지만 제한)
+        if self.label_loss_weight:
+            h_pos_weight = get_pos_weight(final_h_target).to(h_logits.device)
+            r_pos_weight = get_pos_weight(r_target).to(r_logits.device)
+            t_pos_weight = get_pos_weight(final_t_target).to(t_logits.device)
+            # pos_weight를 적용한 BCE Loss
+            loss_bce = (
+                F.binary_cross_entropy_with_logits(h_logits, final_h_target, pos_weight=h_pos_weight) +
+                F.binary_cross_entropy_with_logits(r_logits, r_target, pos_weight=r_pos_weight) +
+                F.binary_cross_entropy_with_logits(t_logits, final_t_target, pos_weight=t_pos_weight)
+            )
+        else:
+            loss_bce = (
+                F.binary_cross_entropy_with_logits(h_logits, final_h_target) +
+                F.binary_cross_entropy_with_logits(r_logits, r_target) +
+                F.binary_cross_entropy_with_logits(t_logits, final_t_target)
+            )
         return loss_bce
 
     def cal_label_loss_wsubgraph(self, h_logits, r_logits, t_logits, entity_ids, triple_ids, is_predicted_tail, subgraphs):
@@ -95,6 +157,33 @@ class KG_extract(nn.Module):
         # 3. 주어진 20개의 후보군(Candidates) # entity_ids: [batch_size, num_candidates]
         cand_H = D_H[entity_ids] # [batch_size, num_candidates, hidden_dim]
         cand_T = D_T[entity_ids]
+        if self.use_in_batch_negative:
+            # 배치 내 모든 샘플이 가진 모든 후보군 (B * 20개)
+            batch_all_entity_candidates = entity_ids.view(-1) # [B * 20]
+            # 배치 내 모든 샘플의 정답 H, T (B * 2)
+            batch_all_pos_ids = torch.cat([triple_ids[:, 0], triple_ids[:, 2]], dim=0) # [B * 2]
+            global_neg_pool = torch.cat([batch_all_entity_candidates, batch_all_pos_ids], dim=0) # [B*22] = [176]
+            combined_ids = global_neg_pool.unsqueeze(0).expand(self.batch_size, -1) # [batch_size, B*22]
+            cand_H = D_H[combined_ids] # [B, B*22, D]
+            cand_T = D_T[combined_ids]
+            q_tail = (h_fixed + r_fixed).unsqueeze(1) #[8,1,4096]
+            sim_tail = F.cosine_similarity(q_tail, cand_T, dim=2) 
+            q_head = (t_fixed - r_fixed).unsqueeze(1)
+            sim_head = F.cosine_similarity(q_head, cand_H, dim=2)
+            is_tail = is_predicted_tail.unsqueeze(1)
+            similarities = torch.where(is_tail, sim_tail, sim_head) #[8,8*22]
+            target_entity = torch.where(is_predicted_tail, triple_ids[:, 2], triple_ids[:, 0])
+            # [중요] In-batch로 인해 한 행에 정답 ID가 여러 번 나타날 수 있음 (matches가 여러 곳에서 True)
+            matches = (combined_ids == target_entity.unsqueeze(1))
+            valid_mask = matches.any(dim=1)
+            num_pos = matches.sum(dim=1, keepdim=True).float().clamp(min=1.0)
+            target_dist = matches.float() / num_pos # [B, 176]
+            # 7. InfoNCE Logits 계산
+            inv_t = torch.clamp(F.softplus(self.inv_t_param), max=100.0)
+            logits = similarities * inv_t
+            loss_per_sample = F.cross_entropy(logits, target_dist, reduction='none')
+            final_loss = (loss_per_sample * valid_mask.float()).sum() / (valid_mask.float().sum() + 1e-8)
+            return final_loss
         # Tail을 예측할 때 (h + r 이 기준점)
         q_tail = (h_fixed + r_fixed).unsqueeze(1) # [batch_size, 1, hidden_dim]
         d_tail = torch.norm(q_tail - cand_T, p=2, dim=2) # [batch_size, num_candidates]
@@ -114,7 +203,136 @@ class KG_extract(nn.Module):
         loss_per_sample = F.cross_entropy(logits, labels, reduction='none')
         final_loss = (loss_per_sample * valid_mask.float()).sum() / (valid_mask.float().sum() + 1e-8)
         return final_loss
+    
+    def _apply_single_head_attention(self, h_fixed, r_fixed, t_fixed, x_attn, attn_mask, extract_pos):
+        #B: batch size, L:sequence length, H:hidden dim, D: internal_dim
+        K = self.W_k(x_attn)  # [B, L, H] -> [B, L, D]
+        V = self.W_v(x_attn)  # [B, L, H] -> [B, L, D]
+        Q_h = self.W_q(h_fixed).unsqueeze(1)  # [B, H] -> [B, D] -> [B, 1, D]
+        Q_r = self.W_q(r_fixed).unsqueeze(1)  # [B, H] -> [B, D] -> [B, 1, D]
+        Q_t = self.W_q(t_fixed).unsqueeze(1)  # [B, H] -> [B, D] -> [B, 1, D]
+        # K.transpose(1, 2) 형태: [B, L, D] -> [B, D, L] # torch.bmm( [B, 1, D], [B, D, L] ) -> [B, 1, L]
+        d_k = self.internal_dim
+        score_h = torch.bmm(Q_h, K.transpose(1, 2)) / math.sqrt(d_k)
+        score_r = torch.bmm(Q_r, K.transpose(1, 2)) / math.sqrt(d_k)
+        score_t = torch.bmm(Q_t, K.transpose(1, 2)) / math.sqrt(d_k)
 
+        # [마스킹] extract_pos 이후의 토큰 무시
+        if extract_pos is not None:
+            batch_size, seq_len, _ = x_attn.size()
+            valid_lens = extract_pos[:, 1] # 실제 타겟 토큰까지의 길이 [batch_size]
+            
+            seq_range = torch.arange(seq_len, device=x_attn.device).unsqueeze(0)
+            length_mask = (seq_range >= valid_lens.unsqueeze(1)).unsqueeze(1) # [batch_size, 1, seq_len]
+            
+            score_h = score_h.masked_fill(length_mask, -1e9)
+            score_r = score_r.masked_fill(length_mask, -1e9)
+            score_t = score_t.masked_fill(length_mask, -1e9)
+
+        attn_weights_h = F.softmax(score_h, dim=-1)
+        h_attn = torch.bmm(attn_weights_h, V).squeeze(1)
+        
+        attn_weights_r = F.softmax(score_r, dim=-1)
+        r_attn = torch.bmm(attn_weights_r, V).squeeze(1)
+        
+        attn_weights_t = F.softmax(score_t, dim=-1)
+        t_attn = torch.bmm(attn_weights_t, V).squeeze(1)
+        
+        # 최종 Context Vector 더하기 (Residual)
+        h_attn_out = self.W_o(h_attn) # [B, D] -> [B, E]
+        r_attn_out = self.W_o(r_attn) # [B, D] -> [B, E]
+        t_attn_out = self.W_o(t_attn) # [B, D] -> [B, E]
+        h_updated = h_fixed + h_attn_out
+        r_updated = r_fixed + r_attn_out
+        t_updated = t_fixed + t_attn_out
+
+        return h_updated, r_updated, t_updated
+
+
+    def cal_kgc_loss_margin_adv(self, entity_ids, triple_ids, is_predicted_tail, x_attn=None, attn_mask=None, extract_pos=None, adv_temperature=1.0):
+
+        D_H = self.entity_embedding
+        D_R = self.relation_embedding
+        D_T = self.entity_embedding
+
+        h_fixed = D_H[triple_ids[:, 0]]
+        r_fixed = D_R[triple_ids[:, 1]]
+        t_fixed = D_T[triple_ids[:, 2]]
+
+        if self.use_attention:
+            h_fixed, r_fixed, t_fixed = self._apply_single_head_attention(h_fixed, r_fixed, t_fixed, x_attn, attn_mask, extract_pos) 
+
+        batch_size = entity_ids.size(0)
+        num_total_entities = D_H.size(0) # 전체 엔티티 수
+        # 여기까지는 동일
+        
+        # Negative sampling 추가 
+        # 일단 256, 하이퍼파라미터
+        num_neg_samples = 256
+        rand_entity_ids = torch.randint(0, num_total_entities, (batch_size, num_neg_samples), device=entity_ids.device)
+        
+        # 기존 20개 + 랜덤 256개 병합 -> 총 276개의 후보군
+        combined_ids = torch.cat([entity_ids, rand_entity_ids], dim=1)
+        
+        cand_H = D_H[combined_ids]
+        cand_T = D_T[combined_ids]
+
+        # margin-based loss에서는 L1 norm 사용.
+        q_tail = (h_fixed + r_fixed).unsqueeze(1)
+        d_tail = torch.norm(q_tail - cand_T, p=1, dim=2)
+
+        q_head = (t_fixed - r_fixed).unsqueeze(1)
+        d_head = torch.norm(cand_H - q_head, p=1, dim=2)
+
+        is_tail = is_predicted_tail.unsqueeze(1)
+        distances = torch.where(is_tail, d_tail, d_head)
+        
+        target_entity = torch.where(is_predicted_tail, triple_ids[:, 2], triple_ids[:, 0])
+        matches = (combined_ids == target_entity.unsqueeze(1))
+       
+        # 정답 거리 (d_pos) 추출
+        # [주의] 랜덤 샘플링 중 정답이 우연히 1번 더 뽑혀서 matches가 True인 곳이 2개 이상일 수 있음. 
+        # 중복 합산을 막기 위해 True의 개수로 나눠 평균 처리.
+        num_matches = matches.float().sum(dim=1, keepdim=True).clamp(min=1.0)
+        d_pos = (distances * matches.float()).sum(dim=1, keepdim=True) / num_matches
+
+        # Margin 점수 변환 (Score = Gamma - Distance)
+        #gamma = self.gamma.item()
+        # 일단 9.0으로 적용, hyperparameter
+        gamma = 9.0
+        pos_score = gamma - d_pos
+        neg_score = gamma - distances # 오답을 포함한 전체 후보군의 점수
+
+        # 정답(Positive) Loss 계산
+        pos_loss = -F.logsigmoid(pos_score).squeeze(dim=1) # [batch_size]
+
+        # ---------------------------------------------------------
+        # 적대적 오답 샘플링 (Negative Adversarial Sampling) 적용
+        # ---------------------------------------------------------
+        # (1) Softmax를 오답에만 적용하기 위해, 진짜 정답 위치의 점수를 매우 낮게(-1e9) 마스킹
+        adv_neg_score = neg_score.clone()
+        adv_neg_score[matches] = -1e9 
+
+        # (2) 오답들에 대한 적대적 가중치 계산
+        # 점수가 높을수록(거리가 가까워서 정답으로 착각하기 쉬울수록) 높은 가중치를 가짐
+        # .detach()를 적용하여 가중치 자체에는 역전파(Backprop)가 되지 않도록 함 (Self-Adversarial 논문 원칙)
+        neg_weights = F.softmax(adv_neg_score * adv_temperature, dim=1).detach()
+
+        # (3) 가중치가 반영된 오답(Negative) Loss 계산
+        # Softmax 특성상 neg_weights의 합이 1이므로, 이전처럼 오답 개수로 평균 낼 필요 없이 바로 sum()
+        neg_loss_all = neg_weights * (-F.logsigmoid(-neg_score))
+        neg_loss = neg_loss_all.sum(dim=1) # [batch_size]
+
+        # 10. 최종 Loss (Positive와 Negative의 평균)
+        loss_per_sample = (pos_loss + neg_loss) / 2.0
+        
+        # 20개의 candidate에 정답이 있는 경우만 학습, 정답이 없는 경우는 학습 안함 (loss 0)
+        original_matches = (entity_ids == target_entity.unsqueeze(1))
+        valid_mask = original_matches.any(dim=1)
+        final_loss = (loss_per_sample * valid_mask.float()).sum() / (valid_mask.float().sum() + 1e-8)
+
+        return final_loss
+    
     def cal_kgc_loss_wsubgraph(self, triple_ids, subgraphs):
         """
         각 서브그래프(배치 샘플) 단위로 독립적으로 TransE Loss (||h+r-t||_2^2)를 계산합니다.
@@ -128,13 +346,9 @@ class KG_extract(nn.Module):
         D_H = self.W_dec_h.weight.t()
         D_R = self.W_dec_r.weight.t()
         D_T = self.W_dec_t.weight.t()
-        
+
         device = D_H.device
         batch_size = len(subgraphs) if subgraphs else 0
-        
-        # Subgraph가 아예 없는 경우 방어 코드
-        if batch_size == 0:
-            return torch.tensor(0.0, device=device, requires_grad=True)
 
         total_loss = torch.tensor(0.0, device=device)
         valid_batch_count = 0
@@ -181,12 +395,36 @@ class KG_extract(nn.Module):
             
         return final_kgc_loss
 
-    def forward(self, x, query_ids, entity_ids, triple_ids, is_predicted_tail, subgraph):
+    def forward(self, x_context, extract_pos, attn_mask, query_ids, entity_ids, triple_ids, is_predicted_tail, subgraph):
+        if x_context.dim() == 3:
+            x = x_context[extract_pos[:, 0], extract_pos[:, 1]]
+            x_attn = x_context
+        else:
+            x = x_context
+            x_attn = None
+        if not self.use_margin_loss: # margin loss 방식을 안 쓸 때만 적용
+            with torch.no_grad():
+                self.W_dec_h.weight.data = F.normalize(self.W_dec_h.weight.data, p=2, dim=0)
+                self.W_dec_r.weight.data = F.normalize(self.W_dec_r.weight.data, p=2, dim=0)
+                self.W_dec_t.weight.data = F.normalize(self.W_dec_t.weight.data, p=2, dim=0)
         #인코더 통과
         h_logits, r_logits, t_logits = self.W_enc_h(x), self.W_enc_r(x), self.W_enc_t(x)
-        h_acts, r_acts, t_acts = F.relu(h_logits), F.relu(r_logits), F.relu(t_logits)
+
+        if self.use_top_k:
+            def apply_top_k(logits, k):
+                acts = F.relu(logits) # 일단 음수는 날림
+                actual_k = min(k, acts.shape[-1])
+                topk_vals, topk_indices = torch.topk(acts, k=actual_k, dim=-1) # 0으로 꽉 찬 도화지에 Top-K 값만 제자리에 끼워넣기 (미분 그대로 흐름)
+                return torch.zeros_like(acts).scatter_(-1, topk_indices, topk_vals)
+            h_acts, r_acts, t_acts = apply_top_k(h_logits, k=self.K_E), apply_top_k(r_logits, k=self.K_R), apply_top_k(t_logits, k=self.K_E)
+        else:
+            h_acts, r_acts, t_acts = F.relu(h_logits), F.relu(r_logits), F.relu(t_logits)
         #디코더 통과
-        h_recon, r_recon, t_recon = self.W_dec_h(h_acts), self.W_dec_r(r_acts), self.W_dec_t(t_acts)
+        # margin_loss로 계산할 때
+        if self.use_margin_loss:
+            h_recon, r_recon, t_recon = torch.matmul(h_acts, self.entity_embedding), torch.matmul(r_acts, self.relation_embedding), torch.matmul(t_acts, self.entity_embedding)
+        else:
+            h_recon, r_recon, t_recon = self.W_dec_h(h_acts), self.W_dec_r(r_acts), self.W_dec_t(t_acts)
         with torch.no_grad(): # 이건 학습되는 가중치가 아니므로 그래디언트 계산을 끕니다.
             # 배치(Batch) 내에서 0보다 큰(활성화된) 횟수를 더해줍니다.
             # h_acts 형태: [batch_size, E_dim] -> sum(dim=0) -> [E_dim]
@@ -202,6 +440,15 @@ class KG_extract(nn.Module):
             kgc_loss = self.cal_kgc_loss_wsubgraph(triple_ids, subgraph)
         else:
             label_loss = self.cal_label_loss(h_logits, r_logits, t_logits, entity_ids, triple_ids, is_predicted_tail)
-            kgc_loss = self.cal_kgc_loss(entity_ids, triple_ids, is_predicted_tail)
+            if self.use_margin_loss: # margin_loss로 계산할 때
+                kgc_loss = self.cal_kgc_loss_margin_adv(entity_ids, triple_ids, is_predicted_tail, x_attn, attn_mask, extract_pos)
+            else:
+                kgc_loss = self.cal_kgc_loss(entity_ids, triple_ids, is_predicted_tail)
+            
         loss = reconstruction_loss + label_loss + kgc_loss
-        return loss
+        return {
+            "total_loss": loss,
+            "reconstruction_loss": reconstruction_loss,
+            "label_loss": label_loss,
+            "kgc_loss": kgc_loss
+        }
