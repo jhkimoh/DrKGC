@@ -25,6 +25,8 @@ class Arguments:
     extract_loss_weight: float = field(default=1.0) #main.py, drkgc.py
     seed_num: int = field(default=3407, metadata={"help":"seed number"}) #main.py
     use_wandb: bool = field(default=False) #main.py
+    gamma: float = field(default=9) #extract.py
+    use_reconstruction_loss: bool = field(default=True) #main.py, extract.py
 
 @dataclass
 class FinetuningArguments(Seq2SeqTrainingArguments):

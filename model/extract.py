@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import math
 
 class KG_extract(nn.Module):
-    def __init__(self, hidden_dim, E_dim, R_dim, batch_size, include_subgraph, use_margin_loss, use_attention, use_topk, internal_dim=512, tau=0.05):
+    def __init__(self, hidden_dim, E_dim, R_dim, batch_size, include_subgraph, use_margin_loss, use_attention, use_topk, gamma, use_reconstruction_loss, internal_dim=512, tau=0.05):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.E_dim = E_dim
@@ -19,6 +19,7 @@ class KG_extract(nn.Module):
         self._initialize_sae_weights()
         self.use_margin_loss = use_margin_loss
         self.use_attention = use_attention
+        self.use_reconstruction_loss = use_reconstruction_loss
         if self.use_attention:
             self.internal_dim = internal_dim
             self.W_q = nn.Linear(self.hidden_dim, self.internal_dim, bias=False)
@@ -28,7 +29,7 @@ class KG_extract(nn.Module):
         if self.use_margin_loss:
             # margin_loss로 계산할 때 아래와 같은 임베딩 사용.
             self.epsilon = 2.0
-            self.gamma = nn.Parameter(torch.Tensor([9]), requires_grad=False)
+            self.gamma = nn.Parameter(torch.Tensor([gamma]), requires_grad=False)
             self.embedding_range = nn.Parameter(
                 torch.Tensor([(self.gamma.item() + self.epsilon) / self.hidden_dim]), 
                 requires_grad=False
@@ -287,7 +288,7 @@ class KG_extract(nn.Module):
         is_tail = is_predicted_tail.unsqueeze(1)
         distances = torch.where(is_tail, d_tail, d_head)
         
-        target_entity = torch.where(is_predicted_tail, triple_ids[:, 2], triple_ids[:, 0])
+        target_entity = torch.where(is_predicted_tail, triple_ids[:, 0], triple_ids[:, 2])
         matches = (combined_ids == target_entity.unsqueeze(1))
        
         # 정답 거리 (d_pos) 추출
@@ -297,9 +298,7 @@ class KG_extract(nn.Module):
         d_pos = (distances * matches.float()).sum(dim=1, keepdim=True) / num_matches
 
         # Margin 점수 변환 (Score = Gamma - Distance)
-        #gamma = self.gamma.item()
-        # 일단 9.0으로 적용, hyperparameter
-        gamma = 9.0
+        gamma = self.gamma.item()
         pos_score = gamma - d_pos
         neg_score = gamma - distances # 오답을 포함한 전체 후보군의 점수
 
@@ -324,14 +323,8 @@ class KG_extract(nn.Module):
         neg_loss = neg_loss_all.sum(dim=1) # [batch_size]
 
         # 10. 최종 Loss (Positive와 Negative의 평균)
-        loss_per_sample = (pos_loss + neg_loss) / 2.0
-        
-        # 20개의 candidate에 정답이 있는 경우만 학습, 정답이 없는 경우는 학습 안함 (loss 0)
-        original_matches = (entity_ids == target_entity.unsqueeze(1))
-        valid_mask = original_matches.any(dim=1)
-        final_loss = (loss_per_sample * valid_mask.float()).sum() / (valid_mask.float().sum() + 1e-8)
-
-        return final_loss
+        loss = (pos_loss.mean() + neg_loss.mean()) / 2.0
+        return loss
     
     def cal_kgc_loss_wsubgraph(self, triple_ids, subgraphs):
         """
@@ -431,10 +424,12 @@ class KG_extract(nn.Module):
             self.dead_h += (h_acts > 0).sum(dim=0)
             self.dead_r += (r_acts > 0).sum(dim=0)
             self.dead_t += (t_acts > 0).sum(dim=0)
-        #reconstruction_loss
-        x_reconstruct = h_recon + r_recon + t_recon
-        reconstruction_loss = self.cal_reconstruction_loss(x_reconstruct, x)
-        
+        # reconstruction_loss
+        if self.use_reconstruction_loss:
+            x_reconstruct = h_recon + r_recon + t_recon
+            reconstruction_loss = self.cal_reconstruction_loss(x_reconstruct, x)
+        else:
+            reconstruction_loss = 0.0
         if self.include_subgraph:
             label_loss = self.cal_label_loss_wsubgraph(h_logits, r_logits, t_logits, entity_ids, triple_ids, is_predicted_tail, subgraph)
             kgc_loss = self.cal_kgc_loss_wsubgraph(triple_ids, subgraph)
