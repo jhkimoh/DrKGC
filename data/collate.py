@@ -70,7 +70,9 @@ class QueryCollator_extract(QueryCollator):
         # 1. 부모(QueryCollator)의 초기화 코드를 그대로 실행해서 변수들을 세팅합니다.
         super().__init__(args=args, tokenizer=tokenizer, source_max_len=source_max_len, target_max_len=target_max_len)
         # 2. 부모한테 없는 SAE 전용 변수들만 추가로 세팅합니다.
-        self.extract_id = self.tokenizer.convert_tokens_to_ids('<|extract_kg|>') #int
+        self.new_token = args.new_token
+        if args.new_token:
+            self.extract_id = self.tokenizer.convert_tokens_to_ids('<|extract_kg|>') #int
 
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
         bos_id, eos_id = self.tokenizer.bos_token_id, self.tokenizer.eos_token_id
@@ -101,15 +103,22 @@ class QueryCollator_extract(QueryCollator):
         labels = []
         is_predicted_tail = []
         lengths = []
+
         for ex, src_ids, tgt_ids in zip(instances, source_input_ids, target_input_ids):
             # 1. 문장 맨 끝에 extract_id 추가
-            seq = [bos_id] + src_ids + tgt_ids + [eos_id, self.extract_id]
+            if self.new_token:
+                seq = [bos_id] + src_ids + tgt_ids + [eos_id, self.extract_id] # 
+            else:
+                seq = [bos_id] + src_ids + tgt_ids + [eos_id]
             input_ids.append(torch.tensor(seq, dtype=torch.long))
             lengths.append(len(seq))
             # 2. 라벨 마스킹: 마지막 extract_id는 -100이 되도록 유지
             lab = torch.full((len(seq),), -100, dtype=torch.long)
             start = len(src_ids) + 1
-            lab[start:-1] = torch.tensor(tgt_ids + [eos_id], dtype=torch.long)
+            if self.new_token:
+                lab[start:-1] = torch.tensor(tgt_ids + [eos_id], dtype=torch.long)
+            else:
+                lab[start:] = torch.tensor(tgt_ids + [eos_id], dtype=torch.long)
             labels.append(lab)
             is_predicted_tail.append(ex['type']=='predicted_tail')
 

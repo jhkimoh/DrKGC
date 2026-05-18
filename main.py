@@ -184,16 +184,17 @@ def train():
     embed_model = GraphEnhancer(kge_embedding, kge_embedding_dim, 4, 128, 1, 1024, llm_config.hidden_size, llm_config.hidden_act)
 
     if args.use_extract: #수정한 부분(토큰추가, extract_model-인코더,디코더, model-forward수정)
-        tokenizer.add_tokens(['<|extract_kg|>'])
-        model.resize_token_embeddings(len(tokenizer))
+        if args.new_token:
+            tokenizer.add_tokens(['<|extract_kg|>'])
+            model.resize_token_embeddings(len(tokenizer))
         dataset_name = os.path.basename(args.dataset_path)
         if dataset_name not in DATASET_METADATA:
             raise ValueError(f"Unsupported dataset: {dataset_name}. Supported datasets: {list(DATASET_METADATA.keys())}")
         E_dim = DATASET_METADATA[dataset_name]["E_dim"]
         R_dim = DATASET_METADATA[dataset_name]["R_dim"]
-        extract_model = KG_extract(model.config.hidden_size, E_dim, R_dim, args.per_device_train_batch_size, args.include_subgraph, args.use_margin_loss, args.use_attention, args.use_topk, args.gamma, args.use_reconstruction_loss)
+        extract_model = KG_extract(model.config.hidden_size, E_dim, R_dim, args.per_device_train_batch_size, args.include_subgraph, args.use_margin_loss, args.use_attention, args.use_topk, args.gamma, args.use_reconstruction_loss, args.use_rotatE)
         extract_model = extract_model.to(torch.bfloat16)
-        model = DrKGC_extract(tokenizer, model, embed_model, extract_model, args.extract_loss_weight, args.use_attention)
+        model = DrKGC_extract(tokenizer, model, embed_model, extract_model, args.extract_loss_weight, args.use_attention, args.new_token)
         data_module = make_data_module_extract(args, tokenizer) 
         trainer = CustomTrainer(
             model=model, 
@@ -201,6 +202,8 @@ def train():
             args=training_args,
             **data_module,
         )
+    elif args.use_enhanced:
+        enhanced_model = KG_enhanced()
     else:
         model = DrKGC(tokenizer, model, embed_model)
         data_module = make_data_module(args, tokenizer)

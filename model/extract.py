@@ -4,8 +4,9 @@ import torch.nn.functional as F
 import math
 
 class KG_extract(nn.Module):
-    def __init__(self, hidden_dim, E_dim, R_dim, batch_size, include_subgraph, use_margin_loss, use_attention, use_topk, gamma, use_reconstruction_loss, internal_dim=512, tau=0.05):
+    def __init__(self, hidden_dim, E_dim, R_dim, batch_size, include_subgraph, use_margin_loss, use_attention, use_topk, gamma, use_reconstruction_loss, use_rotatE, internal_dim=512, tau=0.05):
         super().__init__()
+        self.use_rotatE = use_rotatE # 일단 냅두기 
         self.hidden_dim = hidden_dim
         self.E_dim = E_dim
         self.R_dim = R_dim
@@ -277,13 +278,38 @@ class KG_extract(nn.Module):
         
         cand_H = D_H[combined_ids]
         cand_T = D_T[combined_ids]
+        # if TransE면 이대로 # if RotatE면 이대로 
+        if self.use_rotatE:
+            pi = 3.14159265358979323846
+            #head, tail은 a+bi의 a,b를 그대로 임베딩에서 가져오고, relation은 임베딩 값 x \in R 일때, x를 각도로 봄. -> cos,sin 계산 
+            re_head, im_head = torch.chunk(h_fixed, 2, dim=-1) # h_fixed \in R^(8,4096) # re_head \in R^(8,2048)
+            re_tail, im_tail = torch.chunk(t_fixed, 2, dim=-1)
+            re_cand_H, im_cand_H = torch.chunk(cand_H, 2, dim=-1) # cand_H \in R^(8,276,4096) # re_cand_H \in R^(8,276,2048)
+            re_cand_T, im_cand_T = torch.chunk(cand_T, 2, dim=-1)
+            phase_relation = r_fixed / (self.embedding_range.item()/pi)
+            re_relation = torch.cos(phase_relation)
+            im_relation = torch.sin(phase_relation)
+            # if mode == "head-batch": #이게 |t(~r)-h| # ~는 켤레복소수기호 
+            re_score_head = (re_relation * re_tail + im_relation * im_tail).unsqueeze(1)
+            im_score_head = (re_relation * im_tail - im_relation * re_tail).unsqueeze(1)
+            re_score_head = re_score_head - re_cand_H # (8,276,2048) = (8,1,2048) - (8,276,2048)
+            im_score_head = im_score_head - im_cand_H
+            score_head = torch.stack([re_score_head,im_score_head], dim=0) # (2,8,276,2048)
+            d_head = score_head.norm(dim=0).sum(dim=2) # (8,276,2048).(8,276)
+            # else:#이게 |hr-t|
+            re_score_tail = (re_head * re_relation - im_head * im_relation).unsqueeze(1)
+            im_score_tail = (re_head * im_relation + im_head * re_relation).unsqueeze(1)
+            re_score_tail = re_score_tail - re_cand_T 
+            im_score_tail = im_score_tail - im_cand_T
+            score_tail = torch.stack([re_score_tail,im_score_tail], dim=0)
+            d_tail = score_tail.norm(dim=0).sum(dim=2)
+        else:
+            # margin-based loss에서는 L1 norm 사용.
+            q_tail = (h_fixed + r_fixed).unsqueeze(1)
+            d_tail = torch.norm(q_tail - cand_T, p=1, dim=2) # (8, 276)
 
-        # margin-based loss에서는 L1 norm 사용.
-        q_tail = (h_fixed + r_fixed).unsqueeze(1)
-        d_tail = torch.norm(q_tail - cand_T, p=1, dim=2)
-
-        q_head = (t_fixed - r_fixed).unsqueeze(1)
-        d_head = torch.norm(cand_H - q_head, p=1, dim=2)
+            q_head = (t_fixed - r_fixed).unsqueeze(1)
+            d_head = torch.norm(cand_H - q_head, p=1, dim=2)
 
         is_tail = is_predicted_tail.unsqueeze(1)
         distances = torch.where(is_tail, d_tail, d_head)

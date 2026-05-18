@@ -17,6 +17,7 @@ class Arguments:
     target_max_len: int = field(default=64, metadata={"help": "Maximum target sequence length."},)
     
     checkpoint_dir: str = field(default=None, metadata={"help": "Checkpoint saveing directory"})
+    ## use_extract 파트
     use_extract: bool = field(default=False, metadata={"help":"True for using extract model"}) #main.py
     include_subgraph: bool = field(default=True) #main.py, extract.py
     use_margin_loss: bool = field(default=True) #main.py, extract.py
@@ -27,6 +28,10 @@ class Arguments:
     use_wandb: bool = field(default=False) #main.py
     gamma: float = field(default=9) #extract.py
     use_reconstruction_loss: bool = field(default=True) #main.py, extract.py
+    use_rotatE: bool = field(default=False)
+    new_token: bool = field(default=False)
+    ## use_enhanced 파트
+    use_enhanced: bool = field(default=False, metadata={"help":"True for using enhanced model"})
 
 @dataclass
 class FinetuningArguments(Seq2SeqTrainingArguments):

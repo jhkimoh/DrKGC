@@ -93,10 +93,12 @@ class DrKGC(nn.Module):
         )    
 
 class DrKGC_extract(DrKGC):
-    def __init__(self, tokenizer, llm_model, graph_model, extract_model, extract_loss_weight, use_attention):
+    def __init__(self, tokenizer, llm_model, graph_model, extract_model, extract_loss_weight, use_attention, new_token):
         super().__init__(tokenizer, llm_model, graph_model)
         self.extract_model = extract_model
-        self.extract_id = self.tokenizer.convert_tokens_to_ids(['<|extract_kg|>'])[0]
+        self.new_token = new_token
+        if self.new_token:
+            self.extract_id = self.tokenizer.convert_tokens_to_ids(['<|extract_kg|>'])[0]
         self.extract_loss_weight = extract_loss_weight
         self.use_attention = use_attention
 
@@ -110,7 +112,14 @@ class DrKGC_extract(DrKGC):
             return_dict=True
         )
         last_hidden_state = outputs.hidden_states[-1]
-        extract_pos = torch.nonzero(input_ids == self.extract_id, as_tuple=False)
+
+        if self.new_token:
+            extract_pos = torch.nonzero(input_ids == self.extract_id, as_tuple=False)
+        else:
+            # 1. 패딩 방향(좌/우) 상관없이 각 문장의 진짜 마지막 토큰 위치 추출
+            last_indices = (attention_mask * torch.arange(attention_mask.size(1), device=attention_mask.device)).argmax(dim=1)
+            # 2. nonzero와 완벽히 똑같은 (N, 2) 형태의 텐서로 조립: [배치 인덱스, 마지막 토큰 인덱스]
+            extract_pos = torch.stack([torch.arange(attention_mask.size(0), device=attention_mask.device), last_indices], dim=1)
         if extract_pos.numel() == 0:
             raise ValueError("No extract token '<|extract_kg|>' found in input_ids for DrKGC_extract.")
         if self.use_attention:
@@ -133,3 +142,30 @@ class DrKGC_extract(DrKGC):
         super().save_pretrained(save_dir)
         save_dir = Path(save_dir)
         torch.save(self.extract_model.state_dict(), save_dir / "extract_model.bin")
+
+class DrKGC_enhanced(DrKGC):
+    def __init__(self, tokenizer, llm_model, graph_model, enhanced_model):
+        super().__init__(tokenizer, llm_model, graph_model)
+        self.enhanced_model = enhanced_model
+
+    def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail):
+        inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
+        outputs = self.llm_model(
+            inputs_embeds=inputs_embeds, 
+            attention_mask=attention_mask, 
+            output_hidden_states=True, 
+            return_dict=True
+        )
+        last_hidden_states = outputs.hidden_states[-1]
+        modified_hidden, kgc_loss = self.enhanced_model(last_hidden_states, attention_mask, triple_ids, entity_ids, is_predicted_tail)
+        fused_hidden_states = last_hidden_states.clone()
+        
+        outputs.loss = llm_loss + kgc_loss
+        outputs["llm_loss"] = llm_loss
+        outputs["kgc_loss"] = kgc_loss
+        return outputs
+
+    def save_pretrained(self, save_dir):
+        super().save_pretrained(save_dir)
+        save_dir = Path(save_dir)
+        torch.save(self.enhanced_model.state_dict(), save_dir / "enhanced_model.bin")
