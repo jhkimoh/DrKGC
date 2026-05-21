@@ -33,7 +33,7 @@ class Arguments:
     ## use_enhanced 파트
     use_enhanced: bool = field(default=False, metadata={"help":"True for using enhanced model"})
     rand_neg: bool = field(default=True)
-    kge_model_name: str = field(default='rotatE')
+    kge_model_name: str = field(default='TransE')
 
 @dataclass
 class FinetuningArguments(Seq2SeqTrainingArguments):

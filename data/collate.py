@@ -102,16 +102,17 @@ class QueryCollator_extract(QueryCollator):
         input_ids = []
         labels = []
         is_predicted_tail = []
-        lengths = []
-
-        for ex, src_ids, tgt_ids in zip(instances, source_input_ids, target_input_ids):
+        extract_positions = []
+        for ex, src_ids, tgt_ids in zip(instances, source_input_ids, target_input_ids): # instances는 batch size 크기의 리스트 각 원소는 딕셔너리 
             # 1. 문장 맨 끝에 extract_id 추가
             if self.new_token:
-                seq = [bos_id] + src_ids + tgt_ids + [eos_id, self.extract_id] # 
+                seq = [bos_id] + src_ids + [self.extract_id] + tgt_ids + [eos_id] # 
+                extract_idx = len(src_ids) + 1 # 아니 이러면...다음토큰정답 정하기 어려워지는데 우선 이건 고려하지 말자
             else:
                 seq = [bos_id] + src_ids + tgt_ids + [eos_id]
+                extract_idx = len(src_ids)
             input_ids.append(torch.tensor(seq, dtype=torch.long))
-            lengths.append(len(seq))
+            extract_positions.append(extract_idx)
             # 2. 라벨 마스킹: 마지막 extract_id는 -100이 되도록 유지
             lab = torch.full((len(seq),), -100, dtype=torch.long)
             start = len(src_ids) + 1
@@ -124,24 +125,22 @@ class QueryCollator_extract(QueryCollator):
 
         input_ids = pad_sequence(input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id)
         labels = pad_sequence(labels, batch_first=True, padding_value=-100)
-        lengths_tensor = torch.tensor(lengths, dtype=torch.long)
-        batch_size, max_len = input_ids.size()
-        seq_range = torch.arange(max_len).unsqueeze(0).expand(batch_size, -1)
-        attention_mask = (seq_range < lengths_tensor.unsqueeze(1)).long()
         query_ids = torch.tensor([ex['query_entity_id'] for ex in instances], dtype=torch.long)
         entity_ids = torch.tensor([ex['rank_entities_id'] for ex in instances], dtype=torch.long) # candidate(20개로 고정됨 )
         subgraph = [ex['subgraph'] for ex in instances]
         triple_ids = torch.tensor([ex['triple_id'] for ex in instances], dtype=torch.long)
         is_predicted_tail = torch.tensor(is_predicted_tail, dtype=torch.bool)
+        extract_positions = torch.tensor(extract_positions, dtype=torch.long)
         data_dict = {
             'input_ids': input_ids,
-            'attention_mask': attention_mask,
+            'attention_mask': (input_ids != self.tokenizer.pad_token_id).long(),
             'labels': labels,
             "query_ids": query_ids,
             "entity_ids": entity_ids,
             "subgraph": subgraph,
             "triple_ids": triple_ids,
             "is_predicted_tail": is_predicted_tail,
+            'extract_positions': extract_positions,
         }
 
         return data_dict

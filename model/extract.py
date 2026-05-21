@@ -415,6 +415,7 @@ class KG_extract(nn.Module):
         return final_kgc_loss
 
     def forward(self, x_context, extract_pos, attn_mask, query_ids, entity_ids, triple_ids, is_predicted_tail, subgraph):
+        #breakpoint()
         if x_context.dim() == 3:
             x = x_context[extract_pos[:, 0], extract_pos[:, 1]]
             x_attn = x_context

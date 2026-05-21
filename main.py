@@ -34,7 +34,7 @@ DATASET_METADATA = {
     "fb15k237": {"E_dim": 14541, "R_dim": 237},
     "wn18rr": {"E_dim": 40943, "R_dim": 11},
 }
-
+KGE_MODEL={"TransE":{"R_dim":1000,"gamma":9.0}, "RotatE":{"R_dim":500,"gamma":6.0}}
 def get_accelerate_model(args, config, pretrained_model_class):
     device_map = 'auto' if os.environ.get('LOCAL_RANK') is None else {'': int(os.environ.get('LOCAL_RANK', '0'))}
     
@@ -153,6 +153,7 @@ def train():
         data_args, training_args, generation_args = hfparser.parse_args_into_dataclasses(return_remaining_strings=False)
     training_args.generation_config = GenerationConfig(**vars(generation_args))
     args = argparse.Namespace(**vars(data_args), **vars(training_args))
+    args.new_token = False ## 설정이유: 가운데에 extract_kg 넣을경우 next token prediction 구현이 지금 상황에서 어려움 
     set_seed(args.seed_num)
     os.makedirs(args.output_dir, exist_ok=True)
     if args.use_wandb:
@@ -210,9 +211,12 @@ def train():
             raise ValueError(f"Unsupported dataset: {dataset_name}. Supported datasets: {list(DATASET_METADATA.keys())}")
         E_dim = DATASET_METADATA[dataset_name]["E_dim"]
         R_dim = DATASET_METADATA[dataset_name]["R_dim"]
-        enhanced_model = KG_enhanced(E_dim, R_dim, model.config.hidden_size, args.rand_neg)
+        if args.kge_model_name not in KGE_MODEL:
+            raise ValueError(f"Unsupported KGE model: {args.kge_model_name}. Supported models: {list(KGE_MODEL.keys())}")
+        R_hidden = KGE_MODEL[args.kge_model_name]['R_dim']
+        gamma = KGE_MODEL[args.kge_model_name]['gamma']
+        enhanced_model = KG_enhanced(E_dim, R_dim, model.config.hidden_size, args.rand_neg, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
         model = DrKGC_enhanced(tokenizer, model, embed_model, enhanced_model)
-        # data_module? # trainer?
         data_module = make_data_module_extract(args, tokenizer)
         trainer = CustomTrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
     else:

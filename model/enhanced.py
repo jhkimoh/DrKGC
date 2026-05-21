@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import math 
 
 class KG_enhanced(nn.Module):
-    def __init__(self,E, R, hidden_dim, rand_neg, KGE_model_name='RotatE', head_num=1, R_dim=512, attention_dim=128, gamma=18, num_neg_samples = 256):
+    def __init__(self,E, R, hidden_dim, rand_neg, KGE_model_name='TransE', head_num=1, R_dim=1000, attention_dim=128, gamma=18, num_neg_samples = 256):
         super().__init__()
         ## 0. 공통 정의 E(entity 개수) R(relation 개수) 
         # E_dim(ent embedding의 hidden dim) R_dim(rel embedding의 hidden dim) 
@@ -58,7 +58,7 @@ class KG_enhanced(nn.Module):
         self.num_neg_samples = num_neg_samples
         self.random_neg = rand_neg 
     
-    def _apply_attention(self, emb, K, V, attention_mask):
+    def _apply_attention(self, emb, K, V, attention_mask,is_relation=False):
         """
         emb: (B,E_dim) or (B,20,E_dim)
         K: (B,L,A)
@@ -68,7 +68,7 @@ class KG_enhanced(nn.Module):
         is_2d = (emb.dim()==2)
         if is_2d:
             emb = emb.unsqueeze(1) # (B,1,E_dim)
-        if self.dim_different:
+        if self.dim_different and is_relation:
             Q = self.W_q_r(emb) # (B,1,A)
         else:
             Q = self.W_q(emb) # (B,1,A) or (B,20,A)
@@ -77,7 +77,7 @@ class KG_enhanced(nn.Module):
         scores = scores.masked_fill(extended_mask==0, -1e9) # (B,1,L) or (B,20,L)
         attn_weights = F.softmax(scores, dim=-1) # (B,1,L) or (B,20,L)
         context = torch.matmul(attn_weights, V) #(B,1,E_dim) or (B,20,E_dim)
-        if self.dim_different:
+        if self.dim_different and is_relation:
             context = self.W_o_r(context) #(B,1,R_dim)
         emb_tilde = emb + context 
         if is_2d:
@@ -156,7 +156,7 @@ class KG_enhanced(nn.Module):
         cand_emb_tilde = self._apply_attention(cand_emb, K, V, attention_mask)
         ## rel
         rel_emb = self.relation_embedding(triple_ids[:,1]) #(B,E_dim/2)
-        rel_emb_tilde = self._apply_attention(rel_emb, K, V, attention_mask)
+        rel_emb_tilde = self._apply_attention(rel_emb, K, V, attention_mask, is_relation=True)
         # d_i 구하기 # 여기까지는 동일
 
         d_head, d_tail = self._calculate_KGE_distance(head_emb_tilde, rel_emb_tilde, tail_emb_tilde, cand_emb_tilde, cand_emb_tilde)
@@ -170,7 +170,7 @@ class KG_enhanced(nn.Module):
         # 함수 호출! S 리턴받기
         S = self._compute_structure_embedding(real_distances, real_cand_embs) # (B, E_dim)
 
-        target_entity = torch.where(is_predicted_tail, triple_ids[:, 0], triple_ids[:, 2])
+        target_entity = torch.where(is_predicted_tail, triple_ids[:, 2], triple_ids[:, 0])
         matches = (combined_ids == target_entity.unsqueeze(1))
 
         # 정답 거리 (d_pos) 추출

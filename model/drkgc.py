@@ -96,7 +96,7 @@ class DrKGC_extract(DrKGC):
         self.extract_loss_weight = extract_loss_weight
         self.use_attention = use_attention
 
-    def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail):
+    def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail, extract_positions):
         inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
         outputs = self.llm_model(
             inputs_embeds=inputs_embeds, 
@@ -105,23 +105,21 @@ class DrKGC_extract(DrKGC):
             output_hidden_states=True, 
             return_dict=True
         )
-        last_hidden_state = outputs.hidden_states[-1]
+        #breakpoint()
+        last_hidden_state = outputs.hidden_states[-1] # [8, 371, 4096]
+        batch_size = last_hidden_state.size(0)
+        assert self.new_token == False # self.new_token이 True인 경우 수정 안함. 
 
-        if self.new_token:
-            extract_pos = torch.nonzero(input_ids == self.extract_id, as_tuple=False)
-        else:
-            # 1. 패딩 방향(좌/우) 상관없이 각 문장의 진짜 마지막 토큰 위치 추출
-            last_indices = (attention_mask * torch.arange(attention_mask.size(1), device=attention_mask.device)).argmax(dim=1)
-            # 2. nonzero와 완벽히 똑같은 (N, 2) 형태의 텐서로 조립: [배치 인덱스, 마지막 토큰 인덱스]
-            extract_pos = torch.stack([torch.arange(attention_mask.size(0), device=attention_mask.device), last_indices], dim=1)
-        if extract_pos.numel() == 0:
-            raise ValueError("No extract token '<|extract_kg|>' found in input_ids for DrKGC_extract.")
+        batch_idx = torch.arange(batch_size, device=last_hidden_state.device) # [8]
+        extract_pos = torch.stack([batch_idx, extract_positions], dim=1 ) # [8, 2]
         if self.use_attention:
-            max_pos = extract_pos[:, 1].max().item()
-            x = last_hidden_state[:, :max_pos + 1, :]
-            attn_mask = attention_mask[:, :max_pos + 1]
+            max_pos = extract_positions.max().item()
+            x = last_hidden_state[:, :max_pos+1, :]
+            seq_range = torch.arange(max_pos+1, device=last_hidden_state.device).unsqueeze(0) # (1,max_pos+1)
+            strict_mask = (seq_range <= extract_positions.unsqueeze(1)).long() # (1,max_pos+1) <= (B,1)
+            attn_mask = attention_mask[:, :max_pos+1] * strict_mask
         else:
-            x = last_hidden_state[extract_pos[:,0], extract_pos[:,1]]
+            x = last_hidden_state[batch_idx, extract_positions]
             attn_mask = None
         extract_outputs = self.extract_model(x, extract_pos, attn_mask, query_ids, entity_ids, triple_ids, is_predicted_tail, subgraph)
         lm_loss = outputs.loss
@@ -137,12 +135,13 @@ class DrKGC_extract(DrKGC):
         save_dir = Path(save_dir)
         torch.save(self.extract_model.state_dict(), save_dir / "extract_model.bin")
 
+
 class DrKGC_enhanced(DrKGC):
     def __init__(self, tokenizer, llm_model, graph_model, enhanced_model):
         super().__init__(tokenizer, llm_model, graph_model)
         self.enhanced_model = enhanced_model
 
-    def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail):
+    def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail, extract_positions):
         inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
         outputs = self.llm_model(
             inputs_embeds=inputs_embeds, 
