@@ -17,7 +17,7 @@ from peft import LoraConfig, get_peft_model, PeftModelForCausalLM, prepare_model
 
 from arguments import Arguments, FinetuningArguments, GenerationArguments
 from data import make_data_module, make_data_module_extract
-from model import GraphEnhancer, DrKGC, DrKGC_extract, KG_extract, CustomTrainer
+from model import GraphEnhancer, DrKGC, DrKGC_extract, KG_extract, CustomTrainer, KG_enhanced, DrKGC_enhanced
 
 from huggingface_hub import login
 from dotenv import load_dotenv
@@ -203,7 +203,18 @@ def train():
             **data_module,
         )
     elif args.use_enhanced:
-        enhanced_model = KG_enhanced()
+        if args.new_token:
+            args.new_token = False # data_module에서 잘못 방지 
+        dataset_name = os.path.basename(args.dataset_path)
+        if dataset_name not in DATASET_METADATA:
+            raise ValueError(f"Unsupported dataset: {dataset_name}. Supported datasets: {list(DATASET_METADATA.keys())}")
+        E_dim = DATASET_METADATA[dataset_name]["E_dim"]
+        R_dim = DATASET_METADATA[dataset_name]["R_dim"]
+        enhanced_model = KG_enhanced(E_dim, R_dim, model.config.hidden_size, args.rand_neg)
+        model = DrKGC_enhanced(tokenizer, model, embed_model, enhanced_model)
+        # data_module? # trainer?
+        data_module = make_data_module_extract(args, tokenizer)
+        trainer = CustomTrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
     else:
         model = DrKGC(tokenizer, model, embed_model)
         data_module = make_data_module(args, tokenizer)

@@ -3,38 +3,32 @@ import numpy as np
 import torch
 from torch import nn
 from transformers import GenerationConfig, Seq2SeqTrainer
+from collections import defaultdict
 
-__all__ = ["DrKGC", "DrKGC_extract", "CustomTrainer"]
+__all__ = ["DrKGC", "DrKGC_extract", "DrKGC_enhanced", "CustomTrainer"]
 
 from transformers import Seq2SeqTrainer
 
 class CustomTrainer(Seq2SeqTrainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.custom_loss_dict = {
-            "lm_loss": 0.0, 
-            "label_loss": 0.0, 
-            "reconstruction_loss": 0.0, 
-            "kgc_loss": 0.0
-        }
+        self.custom_loss_dict = defaultdict(float)
         self.custom_loss_steps = 0
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         loss, outputs = super().compute_loss(model, inputs, return_outputs=True, **kwargs)
         if self.model.training and isinstance(outputs, dict):
-            for key in self.custom_loss_dict.keys():
-                val = outputs.get(key)
-                if val is not None:
-                    # 텐서면 .item()으로 스칼라 변환, 파이썬 숫자면 그대로 누적
+            for key,val in outputs.items():
+                if key.endswith("_loss") and key != "loss":
                     self.custom_loss_dict[key] += val.item() if hasattr(val, "item") else val
             self.custom_loss_steps += 1
         return (loss, outputs) if return_outputs else loss
 
     def log(self, logs: dict):
         if self.custom_loss_steps > 0:
-            for key in self.custom_loss_dict:
-                logs[key] = self.custom_loss_dict[key] / self.custom_loss_steps
-                self.custom_loss_dict[key] = 0.0
+            for key, total_loss in self.custom_loss_dict.items():
+                logs[key] = total_loss / self.custom_loss_steps
+            self.custom_loss_dict.clear()
             self.custom_loss_steps = 0
         super().log(logs)
 
@@ -158,8 +152,20 @@ class DrKGC_enhanced(DrKGC):
         )
         last_hidden_states = outputs.hidden_states[-1]
         modified_hidden, kgc_loss = self.enhanced_model(last_hidden_states, attention_mask, triple_ids, entity_ids, is_predicted_tail)
+        ## llm_loss 구하기
+        batch_size = last_hidden_states.size(0)
+        batch_indices = torch.arange(batch_size)
+        last_indices = attention_mask.sum(dim=1) - 1
         fused_hidden_states = last_hidden_states.clone()
-        
+        fused_hidden_states[batch_indices, last_indices] = modified_hidden # 마지막 hidden embedding 대입하기
+        new_logits = self.llm_model.lm_head(fused_hidden_states)
+        llm_loss = 0.0
+        if labels is not None:
+            shift_logits = new_logits[...,:-1,:].contiguous()
+            shift_labels = labels[...,1:].contiguous()
+            loss_fct = nn.CrossEntropyLoss()
+            llm_loss = loss_fct(shift_logits.view(-1, self.llm_model.config.vocab_size), shift_labels.view(-1))
+        outputs.logit = new_logits
         outputs.loss = llm_loss + kgc_loss
         outputs["llm_loss"] = llm_loss
         outputs["kgc_loss"] = kgc_loss
