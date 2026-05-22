@@ -208,7 +208,7 @@ class KG_enhanced(nn.Module):
         loss = (pos_loss.mean() + neg_loss.mean()) / 2.0
         return S, loss
 
-    def forward(self, last_hidden_states, attention_mask, triple_ids, entity_ids, is_predicted_tail): 
+    def forward(self, lhs_cut, attn_mask, triple_ids, entity_ids, is_predicted_tail):
         breakpoint()
-        modified_hidden, kgc_loss = self.KGC_loss(last_hidden_states, attention_mask, triple_ids, entity_ids, is_predicted_tail)
+        modified_hidden, kgc_loss = self.KGC_loss(lhs_cut, attn_mask, triple_ids, entity_ids, is_predicted_tail)
         return modified_hidden, kgc_loss

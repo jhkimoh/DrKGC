@@ -204,6 +204,7 @@ def train():
             **data_module,
         )
     elif args.use_enhanced:
+        breakpoint()
         if args.new_token:
             args.new_token = False # data_module에서 잘못 방지 
         dataset_name = os.path.basename(args.dataset_path)

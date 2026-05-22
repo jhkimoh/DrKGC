@@ -32,7 +32,7 @@ class Arguments:
     new_token: bool = field(default=False)
     ## use_enhanced 파트
     use_enhanced: bool = field(default=False, metadata={"help":"True for using enhanced model"})
-    rand_neg: bool = field(default=True)
+    rand_neg: bool = field(default=False)
     kge_model_name: str = field(default='TransE')
 
 @dataclass

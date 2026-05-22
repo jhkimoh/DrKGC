@@ -150,13 +150,20 @@ class DrKGC_enhanced(DrKGC):
             return_dict=True
         )
         last_hidden_states = outputs.hidden_states[-1]
-        modified_hidden, kgc_loss = self.enhanced_model(last_hidden_states, attention_mask, triple_ids, entity_ids, is_predicted_tail)
-        ## llm_loss 구하기
         batch_size = last_hidden_states.size(0)
-        batch_indices = torch.arange(batch_size)
-        last_indices = attention_mask.sum(dim=1) - 1
+        batch_indices = torch.arange(batch_size, device=last_hidden_states.device)
+        breakpoint()
+        extract_pos = torch.stack([batch_indices, extract_positions], dim=1)
+        max_pos = extract_positions.max().item()
+        lhs_cut = last_hidden_states[:, :max_pos+1, :]
+        seq_range = torch.arange(max_pos+1, device=last_hidden_states.device).unsqueeze(0)
+        strict_mask = (seq_range<=extract_positions.unsqueeze(1)).long()
+        attn_mask = attention_mask[:, :max_pos+1] * strict_mask 
+        modified_hidden, kgc_loss = self.enhanced_model(lhs_cut, attn_mask, triple_ids, entity_ids, is_predicted_tail)
+        ## llm_loss 구하기
+        
         fused_hidden_states = last_hidden_states.clone()
-        fused_hidden_states[batch_indices, last_indices] = modified_hidden # 마지막 hidden embedding 대입하기
+        fused_hidden_states[batch_indices, extract_positions] = modified_hidden # 마지막 hidden embedding 대입하기
         new_logits = self.llm_model.lm_head(fused_hidden_states)
         llm_loss = 0.0
         if labels is not None:
@@ -164,7 +171,7 @@ class DrKGC_enhanced(DrKGC):
             shift_labels = labels[...,1:].contiguous()
             loss_fct = nn.CrossEntropyLoss()
             llm_loss = loss_fct(shift_logits.view(-1, self.llm_model.config.vocab_size), shift_labels.view(-1))
-        outputs.logit = new_logits
+        outputs.logits = new_logits
         outputs.loss = llm_loss + kgc_loss
         outputs["llm_loss"] = llm_loss
         outputs["kgc_loss"] = kgc_loss
