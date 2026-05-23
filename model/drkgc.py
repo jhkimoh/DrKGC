@@ -137,9 +137,10 @@ class DrKGC_extract(DrKGC):
 
 
 class DrKGC_enhanced(DrKGC):
-    def __init__(self, tokenizer, llm_model, graph_model, enhanced_model):
+    def __init__(self, tokenizer, llm_model, graph_model, enhanced_model, kgc_loss_weight):
         super().__init__(tokenizer, llm_model, graph_model)
         self.enhanced_model = enhanced_model
+        self.kgc_loss_weight = kgc_loss_weight
 
     def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail, extract_positions):
         inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
@@ -159,7 +160,8 @@ class DrKGC_enhanced(DrKGC):
         attn_mask = attention_mask[:, :max_pos+1] * strict_mask 
         structure_embedding, kgc_loss = self.enhanced_model(lhs_cut, attn_mask, triple_ids, entity_ids, is_predicted_tail)
         ## llm_loss 구하기
-        breakpoint()
+        kgc_loss = kgc_loss * self.kgc_loss_weight
+        #breakpoint()
         fused_hidden_states = last_hidden_states.clone()
         fused_hidden_states[batch_indices, extract_positions] = fused_hidden_states[batch_indices, extract_positions] + structure_embedding # S 더해주기 
         new_logits = self.llm_model.lm_head(fused_hidden_states) # [8, 371, 128256]
@@ -170,7 +172,7 @@ class DrKGC_enhanced(DrKGC):
             loss_fct = nn.CrossEntropyLoss()
             llm_loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)) #([2960,128256],[2960])
         outputs["logits"] = new_logits 
-        outputs["loss"] = llm_loss + kgc_loss
+        outputs["loss"] = llm_loss + kgc_loss 
         outputs["llm_loss"] = llm_loss
         outputs["kgc_loss"] = kgc_loss
         return outputs

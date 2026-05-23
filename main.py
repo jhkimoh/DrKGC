@@ -31,8 +31,8 @@ login(token=hf_token)
 
 
 DATASET_METADATA = {
-    "fb15k237": {"E_dim": 14541, "R_dim": 237},
-    "wn18rr": {"E_dim": 40943, "R_dim": 11},
+    "fb15k237": {"E_dim": 14541, "R_dim": 237, "kgc_loss_weight":0.01},
+    "wn18rr": {"E_dim": 40943, "R_dim": 11, "kgc_loss_weight":0.03},
 }
 KGE_MODEL={"fb15k237":{"R_dim":1000,"gamma":9.0}, "wn18rr":{"R_dim":500,"gamma":6.0}}
 def get_accelerate_model(args, config, pretrained_model_class):
@@ -212,12 +212,13 @@ def train():
             raise ValueError(f"Unsupported dataset: {dataset_name}. Supported datasets: {list(DATASET_METADATA.keys())}")
         E_dim = DATASET_METADATA[dataset_name]["E_dim"]
         R_dim = DATASET_METADATA[dataset_name]["R_dim"]
+        kgc_loss_weight = DATASET_METADATA[dataset_name]["kgc_loss_weight"]
         if dataset_name not in KGE_MODEL:
             raise ValueError(f"Unsupported KGE model: {args.kge_model_name}. Supported models: {list(KGE_MODEL.keys())}")
         R_hidden = KGE_MODEL[dataset_name]['R_dim']
         gamma = KGE_MODEL[dataset_name]['gamma']
         enhanced_model = KG_enhanced(E_dim, R_dim, model.config.hidden_size, args.rand_neg, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
-        model = DrKGC_enhanced(tokenizer, model, embed_model, enhanced_model)
+        model = DrKGC_enhanced(tokenizer, model, embed_model, enhanced_model,kgc_loss_weight)
         data_module = make_data_module_extract(args, tokenizer)
         trainer = CustomTrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
     else:
