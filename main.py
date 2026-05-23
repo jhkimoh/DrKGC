@@ -34,7 +34,7 @@ DATASET_METADATA = {
     "fb15k237": {"E_dim": 14541, "R_dim": 237},
     "wn18rr": {"E_dim": 40943, "R_dim": 11},
 }
-KGE_MODEL={"TransE":{"R_dim":1000,"gamma":9.0}, "RotatE":{"R_dim":500,"gamma":6.0}}
+KGE_MODEL={"fb15k237":{"R_dim":1000,"gamma":9.0}, "wn18rr":{"R_dim":500,"gamma":6.0}}
 def get_accelerate_model(args, config, pretrained_model_class):
     device_map = 'auto' if os.environ.get('LOCAL_RANK') is None else {'': int(os.environ.get('LOCAL_RANK', '0'))}
     
@@ -204,7 +204,7 @@ def train():
             **data_module,
         )
     elif args.use_enhanced:
-        breakpoint()
+        #breakpoint()
         if args.new_token:
             args.new_token = False # data_module에서 잘못 방지 
         dataset_name = os.path.basename(args.dataset_path)
@@ -212,10 +212,10 @@ def train():
             raise ValueError(f"Unsupported dataset: {dataset_name}. Supported datasets: {list(DATASET_METADATA.keys())}")
         E_dim = DATASET_METADATA[dataset_name]["E_dim"]
         R_dim = DATASET_METADATA[dataset_name]["R_dim"]
-        if args.kge_model_name not in KGE_MODEL:
+        if dataset_name not in KGE_MODEL:
             raise ValueError(f"Unsupported KGE model: {args.kge_model_name}. Supported models: {list(KGE_MODEL.keys())}")
-        R_hidden = KGE_MODEL[args.kge_model_name]['R_dim']
-        gamma = KGE_MODEL[args.kge_model_name]['gamma']
+        R_hidden = KGE_MODEL[dataset_name]['R_dim']
+        gamma = KGE_MODEL[dataset_name]['gamma']
         enhanced_model = KG_enhanced(E_dim, R_dim, model.config.hidden_size, args.rand_neg, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
         model = DrKGC_enhanced(tokenizer, model, embed_model, enhanced_model)
         data_module = make_data_module_extract(args, tokenizer)

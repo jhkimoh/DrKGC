@@ -149,30 +149,28 @@ class DrKGC_enhanced(DrKGC):
             output_hidden_states=True, 
             return_dict=True
         )
-        last_hidden_states = outputs.hidden_states[-1]
-        batch_size = last_hidden_states.size(0)
-        batch_indices = torch.arange(batch_size, device=last_hidden_states.device)
-        breakpoint()
-        extract_pos = torch.stack([batch_indices, extract_positions], dim=1)
+        last_hidden_states = outputs.hidden_states[-1] # [8,371,4096]
+        batch_size = last_hidden_states.size(0) # 8
+        batch_indices = torch.arange(batch_size, device=last_hidden_states.device) # tensor([0,1,2,3,4,5,6,7])
         max_pos = extract_positions.max().item()
         lhs_cut = last_hidden_states[:, :max_pos+1, :]
-        seq_range = torch.arange(max_pos+1, device=last_hidden_states.device).unsqueeze(0)
-        strict_mask = (seq_range<=extract_positions.unsqueeze(1)).long()
+        seq_range = torch.arange(max_pos+1, device=last_hidden_states.device).unsqueeze(0) # [1,366]
+        strict_mask = (seq_range<=extract_positions.unsqueeze(1)).long() # [1,366] <= [8,1] -> [8,366]
         attn_mask = attention_mask[:, :max_pos+1] * strict_mask 
-        modified_hidden, kgc_loss = self.enhanced_model(lhs_cut, attn_mask, triple_ids, entity_ids, is_predicted_tail)
+        structure_embedding, kgc_loss = self.enhanced_model(lhs_cut, attn_mask, triple_ids, entity_ids, is_predicted_tail)
         ## llm_loss 구하기
-        
+        breakpoint()
         fused_hidden_states = last_hidden_states.clone()
-        fused_hidden_states[batch_indices, extract_positions] = modified_hidden # 마지막 hidden embedding 대입하기
-        new_logits = self.llm_model.lm_head(fused_hidden_states)
+        fused_hidden_states[batch_indices, extract_positions] = fused_hidden_states[batch_indices, extract_positions] + structure_embedding # S 더해주기 
+        new_logits = self.llm_model.lm_head(fused_hidden_states) # [8, 371, 128256]
         llm_loss = 0.0
         if labels is not None:
-            shift_logits = new_logits[...,:-1,:].contiguous()
-            shift_labels = labels[...,1:].contiguous()
+            shift_logits = new_logits[...,:-1,:].contiguous() # [8, 370, 128256]
+            shift_labels = labels[...,1:].contiguous() # [8,370]
             loss_fct = nn.CrossEntropyLoss()
-            llm_loss = loss_fct(shift_logits.view(-1, self.llm_model.config.vocab_size), shift_labels.view(-1))
-        outputs.logits = new_logits
-        outputs.loss = llm_loss + kgc_loss
+            llm_loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)) #([2960,128256],[2960])
+        outputs["logits"] = new_logits 
+        outputs["loss"] = llm_loss + kgc_loss
         outputs["llm_loss"] = llm_loss
         outputs["kgc_loss"] = kgc_loss
         return outputs

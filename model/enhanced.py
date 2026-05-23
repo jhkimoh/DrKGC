@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import math 
 
 class KG_enhanced(nn.Module):
-    def __init__(self,E, R, hidden_dim, rand_neg, KGE_model_name='TransE', head_num=1, R_dim=1000, attention_dim=128, gamma=18, num_neg_samples = 256):
+    def __init__(self,E, R, hidden_dim, rand_neg, KGE_model_name='TransE', head_num=1, R_dim=1000, attention_dim=1024, gamma=18, num_neg_samples = 256):
         super().__init__()
         ## 0. 공통 정의 E(entity 개수) R(relation 개수) 
         # E_dim(ent embedding의 hidden dim) R_dim(rel embedding의 hidden dim) 
@@ -53,12 +53,12 @@ class KG_enhanced(nn.Module):
             nn.init.zeros_(self.W_o_r.weight)
         ## 2. LLM loss 를 위한 W_s, tau 정의
         self.W_s = nn.Linear(self.E_dim, self.H, bias=False)
-        self.tau = nn.Parameter(torch.tensor(1.0))
+        self.tau = nn.Parameter(torch.tensor(1.0), requires_grad=False)
         ## 3. hyper-parameter
         self.num_neg_samples = num_neg_samples
         self.random_neg = rand_neg 
     
-    def _apply_attention(self, emb, K, V, attention_mask,is_relation=False):
+    def _apply_attention(self, emb, K, V, attention_mask, is_relation=False):
         """
         emb: (B,E_dim) or (B,20,E_dim)
         K: (B,L,A)
@@ -111,8 +111,8 @@ class KG_enhanced(nn.Module):
             d_tail = score_tail.norm(dim=0).sum(dim=2)
         elif self.KGE_model.lower() == 'transe':
             # margin-based loss에서는 L1 norm 사용.
-            q_tail = (h_fixed + r_fixed).unsqueeze(1)
-            d_tail = torch.norm(q_tail - cand_T, p=1, dim=2) # (8, 276)
+            q_tail = (h_fixed + r_fixed).unsqueeze(1) # (8,1,E_dim)
+            d_tail = torch.norm(q_tail - cand_T, p=1, dim=2) # (8,1,E_dim)-(8,20,E_dim)->(8,20) dim=2라서 
 
             q_head = (t_fixed - r_fixed).unsqueeze(1)
             d_head = torch.norm(cand_H - q_head, p=1, dim=2)
@@ -125,23 +125,24 @@ class KG_enhanced(nn.Module):
         distances: (B, num_cands)
         cand_embs: (B, num_cands, E_dim)
         """
-        scaled_distances = -distances / self.tau
-        p = F.softmax(scaled_distances, dim=-1) 
-        p = p.unsqueeze(1)
-        S = torch.bmm(p, cand_embs).squeeze(1)
-        S = self.W_s(S)
+        scaled_distances = -distances / self.tau # [8,20]
+        p = F.softmax(scaled_distances, dim=-1)  # [8,20]
+        p = p.unsqueeze(1) # [8,1,20]
+        S = torch.bmm(p, cand_embs).squeeze(1) # [8,1,500] -> [8,500]
+        S = self.W_s(S) # [8,4096] (W_s:[500,4096])
         return S
 
     def KGC_loss(self, last_hidden_states, attention_mask, triple_ids, entity_ids, is_predicted_tail, adv_temperature=1.0):
         batch_size = entity_ids.size(0)
         # Key, Value 준비 
-        K = self.W_k(last_hidden_states) # (B,L,A)
+        K = self.W_k(last_hidden_states) # (B,L,A) = (H,A) (B,L,H)
         V = self.W_v(last_hidden_states) # (B,L,E_dim)
-        # Query 준비 ## head
-        head_emb = self.entity_embedding(triple_ids[:,0]) #(B,E_dim)
+        # Query 준비 # triple_ids [8,3] 
+        ## head
+        head_emb = self.entity_embedding[triple_ids[:,0]] #(B,E_dim)
         head_emb_tilde = self._apply_attention(head_emb, K, V, attention_mask)
         ## tail
-        tail_emb = self.entity_embedding(triple_ids[:,2]) #(B,E_dim)
+        tail_emb = self.entity_embedding[triple_ids[:,2]] #(B,E_dim)
         tail_emb_tilde = self._apply_attention(tail_emb, K, V, attention_mask)
         ## cand
         num_real_cands = entity_ids.size(1) # 원래 후보 개수 (20)
@@ -152,37 +153,37 @@ class KG_enhanced(nn.Module):
             combined_ids = torch.cat([entity_ids, rand_entity_ids], dim=1)
         else:
             combined_ids = entity_ids
-        cand_emb = self.entity_embedding(combined_ids) #(B,276,E_dim)
+        cand_emb = self.entity_embedding[combined_ids] #(B,276,E_dim) or (B,20,E_dim)
         cand_emb_tilde = self._apply_attention(cand_emb, K, V, attention_mask)
         ## rel
-        rel_emb = self.relation_embedding(triple_ids[:,1]) #(B,E_dim/2)
+        rel_emb = self.relation_embedding[triple_ids[:,1]] #(B,E_dim/2)
         rel_emb_tilde = self._apply_attention(rel_emb, K, V, attention_mask, is_relation=True)
         # d_i 구하기 # 여기까지는 동일
 
         d_head, d_tail = self._calculate_KGE_distance(head_emb_tilde, rel_emb_tilde, tail_emb_tilde, cand_emb_tilde, cand_emb_tilde)
 
-        is_tail = is_predicted_tail.unsqueeze(1)
-        distances = torch.where(is_tail, d_tail, d_head)
+        is_tail = is_predicted_tail.unsqueeze(1) # [8,1]
+        distances = torch.where(is_tail, d_tail, d_head) # [8,20]
         
         real_distances = distances[:, :num_real_cands]       # (B, 20)
         real_cand_embs = cand_emb_tilde[:, :num_real_cands, :] # (B, 20, E_dim)
 
         # 함수 호출! S 리턴받기
-        S = self._compute_structure_embedding(real_distances, real_cand_embs) # (B, E_dim)
+        structure_embedding = self._compute_structure_embedding(real_distances, real_cand_embs) # (B, H)
 
-        target_entity = torch.where(is_predicted_tail, triple_ids[:, 2], triple_ids[:, 0])
-        matches = (combined_ids == target_entity.unsqueeze(1))
+        target_entity = torch.where(is_predicted_tail, triple_ids[:, 2], triple_ids[:, 0]) # (B)
+        matches = (combined_ids == target_entity.unsqueeze(1)) # (B,20) True, False로 이루어짐 
 
         # 정답 거리 (d_pos) 추출
         # [주의] 랜덤 샘플링 중 정답이 우연히 1번 더 뽑혀서 matches가 True인 곳이 2개 이상일 수 있음. 
         # 중복 합산을 막기 위해 True의 개수로 나눠 평균 처리.
-        num_matches = matches.float().sum(dim=1, keepdim=True).clamp(min=1.0)
+        num_matches = matches.float().sum(dim=1, keepdim=True).clamp(min=1.0) #[8,1]
         d_pos = (distances * matches.float()).sum(dim=1, keepdim=True) / num_matches
 
         # Margin 점수 변환 (Score = Gamma - Distance)
         gamma = self.gamma.item()
-        pos_score = gamma - d_pos
-        neg_score = gamma - distances # 오답을 포함한 전체 후보군의 점수
+        pos_score = gamma - d_pos # [8,1]
+        neg_score = gamma - distances # 오답을 포함한 전체 후보군의 점수 # [8,20]
 
         # 정답(Positive) Loss 계산
         pos_loss = -F.logsigmoid(pos_score).squeeze(dim=1) # [batch_size]
@@ -206,9 +207,9 @@ class KG_enhanced(nn.Module):
 
         # 10. 최종 Loss (Positive와 Negative의 평균)
         loss = (pos_loss.mean() + neg_loss.mean()) / 2.0
-        return S, loss
+        return structure_embedding, loss
 
     def forward(self, lhs_cut, attn_mask, triple_ids, entity_ids, is_predicted_tail):
-        breakpoint()
-        modified_hidden, kgc_loss = self.KGC_loss(lhs_cut, attn_mask, triple_ids, entity_ids, is_predicted_tail)
-        return modified_hidden, kgc_loss
+        #breakpoint()
+        structure_embedding, kgc_loss = self.KGC_loss(lhs_cut, attn_mask, triple_ids, entity_ids, is_predicted_tail)
+        return structure_embedding, kgc_loss
