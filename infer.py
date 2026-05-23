@@ -21,7 +21,7 @@ from peft import LoraConfig, get_peft_model, PeftModelForCausalLM, prepare_model
 
 from arguments import Arguments, FinetuningArguments, GenerationArguments
 from data import DataModule, QueryCollator
-from model import GraphEnhancer, DrKGC
+from model import GraphEnhancer, DrKGC, DrKGC_enhanced, KG_enhanced
 
 from torch.cuda.amp import autocast
 
@@ -32,6 +32,12 @@ import wandb
 from dotenv import load_dotenv
 load_dotenv()
 
+
+DATASET_METADATA = {
+    "fb15k237": {"E_dim": 14541, "R_dim": 237, "kgc_loss_weight":0.01},
+    "wn18rr": {"E_dim": 40943, "R_dim": 11, "kgc_loss_weight":0.03},
+}
+KGE_MODEL={"fb15k237":{"R_dim":1000,"gamma":9.0}, "wn18rr":{"R_dim":500,"gamma":6.0}}
 
 class Evaluator:
     def __init__(self, args, tokenizer, model, data_module, generation_config):
@@ -62,14 +68,30 @@ class Evaluator:
             self.generation_config.eos_token_id = self.tokenizer.eos_token_id 
 
             subgraph = [ex['subgraph']] if 'subgraph' in ex else None
-            
-            output = self.model.generate(
-                input_ids=input_ids, 
-                query_ids=torch.LongTensor([ex['query_entity_id']]).to(input_ids.device), 
-                entity_ids=torch.LongTensor([ex['rank_entities_id']]).to(input_ids.device), 
-                subgraph=subgraph, 
-                generation_config=self.generation_config,
-            )
+            if self.args.use_enhanced:
+                attention_mask = inputs.attention_mask.cuda()
+                triple_ids = torch.LongTensor([ex['triple_ids']]).cuda() 
+                is_predicted_tail = torch.BoolTensor([ex['is_predicted_tail']]).cuda()
+                extract_positions = torch.LongTensor([input_ids.size(1) - 1]).cuda()
+                output = self.model.generate(
+                    input_ids=input_ids, 
+                    attention_mask=attention_mask,#
+                    query_ids=torch.LongTensor([ex['query_entity_id']]).to(input_ids.device), 
+                    entity_ids=torch.LongTensor([ex['rank_entities_id']]).to(input_ids.device), 
+                    triple_ids=triple_ids,#
+                    is_predicted_tail=is_predicted_tail,#
+                    extract_positions=extract_positions,#
+                    subgraph=subgraph, 
+                    generation_config=self.generation_config,
+                )
+            else:
+                output = self.model.generate(
+                    input_ids=input_ids, 
+                    query_ids=torch.LongTensor([ex['query_entity_id']]).to(input_ids.device), 
+                    entity_ids=torch.LongTensor([ex['rank_entities_id']]).to(input_ids.device), 
+                    subgraph=subgraph, 
+                    generation_config=self.generation_config,
+                )
             generated.append(output.sequences[0].cpu().numpy().tolist())
             ex.pop('input')
         
@@ -154,8 +176,24 @@ if __name__ == '__main__':
     ckpt_dir = Path(args.checkpoint_dir)  
     state = torch.load(ckpt_dir / "graph_model.bin", map_location="cpu")
     embed_model.load_state_dict(state)
-        
-    model = DrKGC(tokenizer, model, embed_model)
+    if args.use_enhanced:
+        dataset_name = os.path.basename(args.dataset_path)
+        if dataset_name not in DATASET_METADATA:
+            raise ValueError(f"Unsupported dataset: {dataset_name}. Supported datasets: {list(DATASET_METADATA.keys())}")
+        E_dim = DATASET_METADATA[dataset_name]["E_dim"]
+        R_dim = DATASET_METADATA[dataset_name]["R_dim"]
+        kgc_loss_weight = DATASET_METADATA[dataset_name]["kgc_loss_weight"]
+        if dataset_name not in KGE_MODEL:
+            raise ValueError(f"Unsupported KGE model: {args.kge_model_name}. Supported models: {list(KGE_MODEL.keys())}")
+        R_hidden = KGE_MODEL[dataset_name]['R_dim']
+        gamma = KGE_MODEL[dataset_name]['gamma']
+        enhanced_model = KG_enhanced(E_dim, R_dim, model.config.hidden_size, args.rand_neg, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
+        enhanced_state = torch.load(ckpt_dir / "enhanced_model.bin", map_location="cpu")
+        enhanced_model.load_state_dict(enhanced_model)
+        enhanced_model.cuda()
+        model = DrKGC_enhanced(tokenizer,model,embed_model,enhanced_model,kgc_loss_weight)
+    else:
+        model = DrKGC(tokenizer, model, embed_model)
 
     model = model.half()
     

@@ -2,7 +2,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from torch import nn
-from transformers import GenerationConfig, Seq2SeqTrainer
+from transformers import GenerationConfig, Seq2SeqTrainer, LogitsProcessor, LogitsProcessorList
 from collections import defaultdict
 
 __all__ = ["DrKGC", "DrKGC_extract", "DrKGC_enhanced", "CustomTrainer"]
@@ -135,6 +135,17 @@ class DrKGC_extract(DrKGC):
         save_dir = Path(save_dir)
         torch.save(self.extract_model.state_dict(), save_dir / "extract_model.bin")
 
+class LateFusionLogitsProcessor(LogitsProcessor):
+    def __init__(self, delta_logits):
+        self.delta_logits = delta_logits # lm_head(S) 값
+        self.step = 0
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
+        # 질문을 다 읽고 "첫 번째" 정답 토큰을 생성할 때만 S의 영향을 더해줍니다!
+        if self.step == 0:
+            scores = scores + self.delta_logits
+        self.step += 1
+        return scores
 
 class DrKGC_enhanced(DrKGC):
     def __init__(self, tokenizer, llm_model, graph_model, enhanced_model, kgc_loss_weight):
@@ -181,3 +192,42 @@ class DrKGC_enhanced(DrKGC):
         super().save_pretrained(save_dir)
         save_dir = Path(save_dir)
         torch.save(self.enhanced_model.state_dict(), save_dir / "enhanced_model.bin")
+
+    @torch.no_grad()
+    def generate(self, input_ids, attention_mask, query_ids, entity_ids, triple_ids, is_predicted_tail, extract_positions, subgraph=None, generation_config=None):
+        # 1. 입력 임베딩 준비
+        inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
+        
+        # 2. LLM을 한 번 통과시켜서 H (last_hidden_states) 추출
+        outputs = self.llm_model(
+            inputs_embeds=inputs_embeds,
+            attention_mask=attention_mask,
+            output_hidden_states=True,
+            return_dict=True,
+            use_cache=False # 순수하게 H만 뽑을 것이므로 캐시 끔
+        )
+        last_hidden_states = outputs.hidden_states[-1]
+        max_pos = extract_positions.max().item()
+        lhs_cut = last_hidden_states[:, :max_pos+1, :]
+        seq_range = torch.arange(max_pos+1, device=last_hidden_states.device).unsqueeze(0) # [1,366]
+        strict_mask = (seq_range<=extract_positions.unsqueeze(1)).long() # [1,366] <= [8,1] -> [8,366]
+        attn_mask = attention_mask[:, :max_pos+1] * strict_mask 
+        structure_embedding, kgc_loss = self.enhanced_model(lhs_cut, attn_mask, triple_ids, entity_ids, is_predicted_tail)
+
+        # 4. 수학적 마법: lm_head(S)를 미리 계산해 둡니다 (이게 바로 delta_logits)
+        delta_logits = self.llm_model.lm_head(structure_embedding)
+        
+        # 5. 첫 생성 토큰에만 delta_logits를 더해주는 프로세서 장착
+        processor = LateFusionLogitsProcessor(delta_logits)
+        logits_processor = LogitsProcessorList([processor])
+        
+        if generation_config is None:
+            generation_config = GenerationConfig()
+            
+        # 6. 드디어 진짜 생성 (LogitsProcessor가 중간에 개입하여 점수를 조작함!)
+        return self.llm_model.generate(
+            inputs_embeds=inputs_embeds,
+            attention_mask=attention_mask,
+            generation_config=generation_config,
+            logits_processor=logits_processor
+        )
