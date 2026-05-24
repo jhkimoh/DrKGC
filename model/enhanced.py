@@ -74,7 +74,8 @@ class KG_enhanced(nn.Module):
             Q = self.W_q(emb) # (B,1,A) or (B,20,A)
         scores = torch.matmul(Q, K.transpose(-2,-1)) / math.sqrt(self.A) # (B,1,L) or (B,20,L)
         extended_mask = attention_mask.unsqueeze(1) #(B,1,L)
-        scores = scores.masked_fill(extended_mask==0, -1e9) # (B,1,L) or (B,20,L)
+        safe_min = torch.finfo(scores.dtype).min
+        scores = scores.masked_fill(extended_mask==0, safe_min) # (B,1,L) or (B,20,L)
         attn_weights = F.softmax(scores, dim=-1) # (B,1,L) or (B,20,L)
         context = torch.matmul(attn_weights, V) #(B,1,E_dim) or (B,20,E_dim)
         if self.dim_different and is_relation:
@@ -193,7 +194,8 @@ class KG_enhanced(nn.Module):
         # ---------------------------------------------------------
         # (1) Softmax를 오답에만 적용하기 위해, 진짜 정답 위치의 점수를 매우 낮게(-1e9) 마스킹
         adv_neg_score = neg_score.clone()
-        adv_neg_score[matches] = -1e9 
+        safe_min = torch.finfo(adv_neg_score.dtype).min
+        adv_neg_score[matches] = safe_min
 
         # (2) 오답들에 대한 적대적 가중치 계산
         # 점수가 높을수록(거리가 가까워서 정답으로 착각하기 쉬울수록) 높은 가중치를 가짐

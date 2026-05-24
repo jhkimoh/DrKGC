@@ -194,10 +194,9 @@ class DrKGC_enhanced(DrKGC):
         torch.save(self.enhanced_model.state_dict(), save_dir / "enhanced_model.bin")
 
     @torch.no_grad()
-    def generate(self, input_ids, attention_mask, query_ids, entity_ids, triple_ids, is_predicted_tail, extract_positions, subgraph=None, generation_config=None):
+    def generate(self, input_ids, attention_mask, query_ids, entity_ids, triple_ids, is_predicted_tail, subgraph=None, generation_config=None):
         # 1. 입력 임베딩 준비
         inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
-        
         # 2. LLM을 한 번 통과시켜서 H (last_hidden_states) 추출
         outputs = self.llm_model(
             inputs_embeds=inputs_embeds,
@@ -205,17 +204,13 @@ class DrKGC_enhanced(DrKGC):
             output_hidden_states=True,
             return_dict=True,
             use_cache=False # 순수하게 H만 뽑을 것이므로 캐시 끔
-        )
+        ) # output['logits'].shape (1,L,Vocab) # output['hidden_states'][0].shape (1,L,H) -이게 최초 입력+레이어 통과 32개 = 총 33개 
         last_hidden_states = outputs.hidden_states[-1]
-        max_pos = extract_positions.max().item()
-        lhs_cut = last_hidden_states[:, :max_pos+1, :]
-        seq_range = torch.arange(max_pos+1, device=last_hidden_states.device).unsqueeze(0) # [1,366]
-        strict_mask = (seq_range<=extract_positions.unsqueeze(1)).long() # [1,366] <= [8,1] -> [8,366]
-        attn_mask = attention_mask[:, :max_pos+1] * strict_mask 
-        structure_embedding, kgc_loss = self.enhanced_model(lhs_cut, attn_mask, triple_ids, entity_ids, is_predicted_tail)
+        #breakpoint()
+        structure_embedding, kgc_loss = self.enhanced_model(last_hidden_states, attention_mask, triple_ids, entity_ids, is_predicted_tail)
 
         # 4. 수학적 마법: lm_head(S)를 미리 계산해 둡니다 (이게 바로 delta_logits)
-        delta_logits = self.llm_model.lm_head(structure_embedding)
+        delta_logits = self.llm_model.lm_head(structure_embedding) # [1,4096] -> [1,128256]
         
         # 5. 첫 생성 토큰에만 delta_logits를 더해주는 프로세서 장착
         processor = LateFusionLogitsProcessor(delta_logits)

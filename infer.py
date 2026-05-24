@@ -66,13 +66,11 @@ class Evaluator:
             inputs = self.tokenizer(prompt, return_tensors='pt')
             input_ids = inputs.input_ids.cuda() 
             self.generation_config.eos_token_id = self.tokenizer.eos_token_id 
-
             subgraph = [ex['subgraph']] if 'subgraph' in ex else None
             if self.args.use_enhanced:
                 attention_mask = inputs.attention_mask.cuda()
-                triple_ids = torch.LongTensor([ex['triple_ids']]).cuda() 
-                is_predicted_tail = torch.BoolTensor([ex['is_predicted_tail']]).cuda()
-                extract_positions = torch.LongTensor([input_ids.size(1) - 1]).cuda()
+                triple_ids = torch.LongTensor([ex['triple_id']]).cuda() 
+                is_predicted_tail = torch.BoolTensor([ex['type']=='predicted_tail']).cuda()
                 output = self.model.generate(
                     input_ids=input_ids, 
                     attention_mask=attention_mask,#
@@ -80,10 +78,9 @@ class Evaluator:
                     entity_ids=torch.LongTensor([ex['rank_entities_id']]).to(input_ids.device), 
                     triple_ids=triple_ids,#
                     is_predicted_tail=is_predicted_tail,#
-                    extract_positions=extract_positions,#
                     subgraph=subgraph, 
                     generation_config=self.generation_config,
-                )
+                ) # outputs.keys() 'sequences' 'past_key_values'
             else:
                 output = self.model.generate(
                     input_ids=input_ids, 
@@ -93,7 +90,7 @@ class Evaluator:
                     generation_config=self.generation_config,
                 )
             generated.append(output.sequences[0].cpu().numpy().tolist())
-            ex.pop('input')
+            ex.pop('input') # 'input' 키를 삭제하면서 그 value 반환 
         
         batch_preds = self.tokenizer.batch_decode(generated, skip_special_tokens=True)
         for ex_idx, ex in enumerate(dataset):
@@ -147,7 +144,7 @@ if __name__ == '__main__':
             wandb.login(key=wandb_api_key)
             wandb.init(
                 project="DrKGC-Experiments", 
-                name=f"Eval-{os.path.basename(args.checkpoint_dir)}", # 예: Eval-checkpoint-final
+                name=args.run_name, # 예: Eval-checkpoint-final
                 config=vars(args) # 하이퍼파라미터도 같이 저장
             )
         else:
@@ -189,7 +186,7 @@ if __name__ == '__main__':
         gamma = KGE_MODEL[dataset_name]['gamma']
         enhanced_model = KG_enhanced(E_dim, R_dim, model.config.hidden_size, args.rand_neg, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
         enhanced_state = torch.load(ckpt_dir / "enhanced_model.bin", map_location="cpu")
-        enhanced_model.load_state_dict(enhanced_model)
+        enhanced_model.load_state_dict(enhanced_state)
         enhanced_model.cuda()
         model = DrKGC_enhanced(tokenizer,model,embed_model,enhanced_model,kgc_loss_weight)
     else:
