@@ -32,16 +32,12 @@ class Arguments:
     new_token: bool = field(default=False)
     ## use_enhanced 파트
     use_enhanced: bool = field(default=False, metadata={"help":"True for using enhanced model"})
-    rand_neg: bool = field(default=False)
+    rand_neg: bool = field(default=True)
     kge_model_name: str = field(default='TransE')
-    run_name: Optional[str] = field(
-        default="DrKGC-run",
-        metadata={"help": "WandB에 기록될 실험(Run)의 이름입니다."}
-    )
-    report_to: Optional[str] = field(
-        default="none",
-        metadata={"help": "로그를 어디에 기록할지 설정합니다."}
-    )
+    ## use_align 파트
+    use_align: bool = field(default=False, metadata={"help":"True for using align model"})
+    lm_loss: bool = field(default=False)
+    beta: float = field(default=1.0)
 
 @dataclass
 class FinetuningArguments(Seq2SeqTrainingArguments):
@@ -66,7 +62,14 @@ class FinetuningArguments(Seq2SeqTrainingArguments):
     lora_alpha: float = field(default=32)
     lora_dropout: float = field(default=0.1)
     remove_unused_columns: bool = field(default=False)
-
+    run_name: Optional[str] = field(
+        default="DrKGC-run",
+        metadata={"help": "WandB에 기록될 실험(Run)의 이름입니다."}
+    )
+    report_to: Optional[str] = field(
+        default="none",
+        metadata={"help": "로그를 어디에 기록할지 설정합니다."}
+    )
 
 @dataclass
 class GenerationArguments:

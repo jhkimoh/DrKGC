@@ -226,3 +226,68 @@ class DrKGC_enhanced(DrKGC):
             generation_config=generation_config,
             logits_processor=logits_processor
         )
+
+class DrKGC_align(DrKGC):
+    def __init__(self, tokenizer, llm_model, graph_model, align_model, lm_loss, kgc_loss_weight):
+        super().__init__(tokenizer, llm_model, graph_model)
+        self.align_model = align_model
+        self.lm_loss = lm_loss
+        self.align_loss_weight = kgc_loss_weight
+
+    def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail, extract_positions):
+        inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
+        outputs = self.llm_model(
+            inputs_embeds=inputs_embeds, 
+            attention_mask=attention_mask, 
+            labels = labels,
+            output_hidden_states=True, 
+            return_dict=True
+        )
+        last_hidden_states = outputs.hidden_states[-1] # [8,371,4096]
+        batch_size = last_hidden_states.size(0) # 8
+        batch_indices = torch.arange(batch_size, device=last_hidden_states.device) # tensor([0,1,2,3,4,5,6,7])
+        last_hidden_state = last_hidden_states[batch_indices, extract_positions]
+        #breakpoint()
+        align_outputs = self.align_model(last_hidden_state, triple_ids, entity_ids, is_predicted_tail, False)
+
+        outputs["lm_loss"] = outputs.loss
+        outputs["label_loss"] = align_outputs["align_loss"] * self.align_loss_weight
+        outputs["kgc_loss"] = align_outputs["kge_loss"]
+        if self.lm_loss:
+            outputs["loss"] = align_outputs["align_loss"] + align_outputs["kge_loss"] + outputs["lm_loss"]
+        else:
+            outputs["loss"] = align_outputs["align_loss"] + align_outputs["kge_loss"]
+        return outputs
+
+    def save_pretrained(self, save_dir):
+        super().save_pretrained(save_dir)
+        save_dir = Path(save_dir)
+        torch.save(self.align_model.state_dict(), save_dir / "align_model.bin")
+
+    @torch.no_grad()
+    def generate(self, input_ids, attention_mask, query_ids, entity_ids, triple_ids, is_predicted_tail, subgraph=None, generation_config=None):
+        # 1. 입력 임베딩 준비
+        inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
+        # 2. LLM을 한 번 통과시켜서 H (last_hidden_states) 추출
+        outputs = self.llm_model(
+            inputs_embeds=inputs_embeds,
+            attention_mask=attention_mask,
+            output_hidden_states=True,
+            return_dict=True,
+            use_cache=False # 순수하게 H만 뽑을 것이므로 캐시 끔
+        ) # output['logits'].shape (1,L,Vocab) # output['hidden_states'][0].shape (1,L,H) -이게 최초 입력+레이어 통과 32개 = 총 33개 
+        last_hidden_state = outputs.hidden_states[-1][-1] # [4096]
+        # 우선 train부터 완료하고 돌아와서 다시
+        breakpoint()
+        align_output = self.align_model(last_hidden_state, triple_ids, entity_ids, is_predicted_tail, True)
+
+        if generation_config is None:
+            generation_config = GenerationConfig()
+            
+        # 6. 드디어 진짜 생성 (LogitsProcessor가 중간에 개입하여 점수를 조작함!)
+        return self.llm_model.generate(
+            inputs_embeds=inputs_embeds,
+            attention_mask=attention_mask,
+            generation_config=generation_config,
+            logits_processor=logits_processor
+        )

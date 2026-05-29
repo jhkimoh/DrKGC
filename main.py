@@ -1,6 +1,5 @@
 import os
 import argparse
-
 import bitsandbytes as bnb
 import torch
 
@@ -17,7 +16,7 @@ from peft import LoraConfig, get_peft_model, PeftModelForCausalLM, prepare_model
 
 from arguments import Arguments, FinetuningArguments, GenerationArguments
 from data import make_data_module, make_data_module_extract
-from model import GraphEnhancer, DrKGC, DrKGC_extract, KG_extract, CustomTrainer, KG_enhanced, DrKGC_enhanced
+from model import GraphEnhancer, DrKGC, DrKGC_extract, KG_extract, CustomTrainer, KG_enhanced, DrKGC_enhanced, DrKGC_align, KG_align
 
 from huggingface_hub import login
 from dotenv import load_dotenv
@@ -29,22 +28,21 @@ if not hf_token:
     raise ValueError("HUGGINGFACE_TOKEN environment variable is required")
 login(token=hf_token)
 
-
 DATASET_METADATA = {
-    "fb15k237": {"E_dim": 14541, "R_dim": 237, "kgc_loss_weight":0.01},
-    "wn18rr": {"E_dim": 40943, "R_dim": 11, "kgc_loss_weight":0.03},
+    "fb15k237": {"E_dim": 14541, "R_dim": 237, "kgc_loss_weight":0.005},
+    "wn18rr": {"E_dim": 40943, "R_dim": 11, "kgc_loss_weight":0.01},
 }
 KGE_MODEL={"fb15k237":{"R_dim":1000,"gamma":9.0}, "wn18rr":{"R_dim":500,"gamma":6.0}}
+
 def get_accelerate_model(args, config, pretrained_model_class):
     device_map = 'auto' if os.environ.get('LOCAL_RANK') is None else {'': int(os.environ.get('LOCAL_RANK', '0'))}
-    
-   
+    device_map = {'': 0}
     if args.use_quant:
         compute_dtype = torch.bfloat16 
         model = pretrained_model_class.from_pretrained(
             args.model_name_or_path,
             config=config,
-            device_map='auto',
+            device_map=device_map, # 원래 'auto'였음 
             quantization_config=BitsAndBytesConfig(
                 load_in_4bit=args.bits == 4,
                 load_in_8bit=args.bits == 8,
@@ -183,16 +181,21 @@ def train():
     kge_embedding_dim = kge_embedding.shape[1]
     llm_config = model.config
     embed_model = GraphEnhancer(kge_embedding, kge_embedding_dim, 4, 128, 1, 1024, llm_config.hidden_size, llm_config.hidden_act)
-
+    dataset_name = os.path.basename(args.dataset_path)
+    if dataset_name not in DATASET_METADATA:
+        raise ValueError(f"Unsupported dataset: {dataset_name}. Supported datasets: {list(DATASET_METADATA.keys())}")
+    E_dim = DATASET_METADATA[dataset_name]["E_dim"]
+    R_dim = DATASET_METADATA[dataset_name]["R_dim"]
+    kgc_loss_weight = DATASET_METADATA[dataset_name]["kgc_loss_weight"]
+    if dataset_name not in KGE_MODEL:
+        raise ValueError(f"Unsupported KGE model: {args.kge_model_name}. Supported models: {list(KGE_MODEL.keys())}")
+    R_hidden = KGE_MODEL[dataset_name]['R_dim']
+    gamma = KGE_MODEL[dataset_name]['gamma']
+    #breakpoint()
     if args.use_extract: #수정한 부분(토큰추가, extract_model-인코더,디코더, model-forward수정)
         if args.new_token:
             tokenizer.add_tokens(['<|extract_kg|>'])
             model.resize_token_embeddings(len(tokenizer))
-        dataset_name = os.path.basename(args.dataset_path)
-        if dataset_name not in DATASET_METADATA:
-            raise ValueError(f"Unsupported dataset: {dataset_name}. Supported datasets: {list(DATASET_METADATA.keys())}")
-        E_dim = DATASET_METADATA[dataset_name]["E_dim"]
-        R_dim = DATASET_METADATA[dataset_name]["R_dim"]
         extract_model = KG_extract(model.config.hidden_size, E_dim, R_dim, args.per_device_train_batch_size, args.include_subgraph, args.use_margin_loss, args.use_attention, args.use_topk, args.gamma, args.use_reconstruction_loss, args.use_rotatE)
         extract_model = extract_model.to(torch.bfloat16)
         model = DrKGC_extract(tokenizer, model, embed_model, extract_model, args.extract_loss_weight, args.use_attention, args.new_token)
@@ -205,20 +208,13 @@ def train():
         )
     elif args.use_enhanced:
         #breakpoint()
-        if args.new_token:
-            args.new_token = False # data_module에서 잘못 방지 
-        dataset_name = os.path.basename(args.dataset_path)
-        if dataset_name not in DATASET_METADATA:
-            raise ValueError(f"Unsupported dataset: {dataset_name}. Supported datasets: {list(DATASET_METADATA.keys())}")
-        E_dim = DATASET_METADATA[dataset_name]["E_dim"]
-        R_dim = DATASET_METADATA[dataset_name]["R_dim"]
-        kgc_loss_weight = DATASET_METADATA[dataset_name]["kgc_loss_weight"]
-        if dataset_name not in KGE_MODEL:
-            raise ValueError(f"Unsupported KGE model: {args.kge_model_name}. Supported models: {list(KGE_MODEL.keys())}")
-        R_hidden = KGE_MODEL[dataset_name]['R_dim']
-        gamma = KGE_MODEL[dataset_name]['gamma']
         enhanced_model = KG_enhanced(E_dim, R_dim, model.config.hidden_size, args.rand_neg, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
         model = DrKGC_enhanced(tokenizer, model, embed_model, enhanced_model,kgc_loss_weight)
+        data_module = make_data_module_extract(args, tokenizer)
+        trainer = CustomTrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
+    elif args.use_align:
+        align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.beta, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
+        model = DrKGC_align(tokenizer, model, embed_model, align_model, args.lm_loss, kgc_loss_weight)
         data_module = make_data_module_extract(args, tokenizer)
         trainer = CustomTrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
     else:
