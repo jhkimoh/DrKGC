@@ -219,19 +219,19 @@ class KG_align(nn.Module):
         if is_infer:# infer 모든 t에 대해 ranking 
             # (1) V_final 구하기 
             query = self.W_q(last_hidden_state) # [1,4096]
-            rel_emb = self.relation_embedding[triple_ids[1]] #(B,E_dim/2)
+            rel_emb = self.relation_embedding[triple_ids[:,1]] # [1,500]
             if is_predicted_tail: # head, relation embedding 구하기 -> \delta
                 head_emb = self.entity_embedding[triple_ids[:,0]]
                 temp = (head_emb + rel_emb)
             else: # relation, tail embedding 구하기 -> \delta
                 tail_emb = self.entity_embedding[triple_ids[:,2]]
                 temp = (tail_emb - rel_emb)
-            delta = torch.norm(query - temp, p=1, dim=-1)
+            delta = torch.norm(query - temp, p=1, dim=-1) # [1]
             alpha = torch.exp(- self.beta * delta) # beta 2개 고르기 +arg에 추가 
-            V_final = alpha * query + (1-alpha) * temp
+            V_final = alpha * query + (1-alpha) * temp # [1,500]
             # (2) score 구하기 모든 entity emb에 대해 계산 
-            all_entities = self.entity_embedding
-            distances = torch.cdist(V_final, all_entities, p=1)
+            all_entities = self.entity_embedding # [40943,500]
+            distances = torch.cdist(V_final, all_entities, p=1) # [1,40943]
             scores = -distances
             return scores
         else:

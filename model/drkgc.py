@@ -4,6 +4,7 @@ import torch
 from torch import nn
 from transformers import GenerationConfig, Seq2SeqTrainer, LogitsProcessor, LogitsProcessorList
 from collections import defaultdict
+import json
 
 __all__ = ["DrKGC", "DrKGC_extract", "DrKGC_enhanced", "CustomTrainer"]
 
@@ -251,12 +252,12 @@ class DrKGC_align(DrKGC):
         align_outputs = self.align_model(last_hidden_state, triple_ids, entity_ids, is_predicted_tail, False)
 
         outputs["lm_loss"] = outputs.loss
-        outputs["label_loss"] = align_outputs["align_loss"] * self.align_loss_weight
-        outputs["kgc_loss"] = align_outputs["kge_loss"]
+        outputs["align_loss"] = align_outputs["align_loss"] * self.align_loss_weight
+        outputs["kge_loss"] = align_outputs["kge_loss"]
         if self.lm_loss:
-            outputs["loss"] = align_outputs["align_loss"] + align_outputs["kge_loss"] + outputs["lm_loss"]
+            outputs["loss"] = outputs["align_loss"] + outputs["kge_loss"] + outputs["lm_loss"]
         else:
-            outputs["loss"] = align_outputs["align_loss"] + align_outputs["kge_loss"]
+            outputs["loss"] = outputs["align_loss"] + outputs["kge_loss"]
         return outputs
 
     def save_pretrained(self, save_dir):
@@ -276,18 +277,19 @@ class DrKGC_align(DrKGC):
             return_dict=True,
             use_cache=False # 순수하게 H만 뽑을 것이므로 캐시 끔
         ) # output['logits'].shape (1,L,Vocab) # output['hidden_states'][0].shape (1,L,H) -이게 최초 입력+레이어 통과 32개 = 총 33개 
-        last_hidden_state = outputs.hidden_states[-1][-1] # [4096]
+        last_hidden_states = outputs.hidden_states[-1] # [1,315,4096]
+        last_hidden_state = last_hidden_states[:, -1, :] # [1, 4096]
         # 우선 train부터 완료하고 돌아와서 다시
-        breakpoint()
-        align_output = self.align_model(last_hidden_state, triple_ids, entity_ids, is_predicted_tail, True)
-
-        if generation_config is None:
-            generation_config = GenerationConfig()
+        #breakpoint()
+        scores = self.align_model(last_hidden_state, triple_ids, entity_ids, is_predicted_tail, True)
+        return scores # [1,40943]
+        #if generation_config is None:
+        #    generation_config = GenerationConfig()
             
         # 6. 드디어 진짜 생성 (LogitsProcessor가 중간에 개입하여 점수를 조작함!)
-        return self.llm_model.generate(
-            inputs_embeds=inputs_embeds,
-            attention_mask=attention_mask,
-            generation_config=generation_config,
-            logits_processor=logits_processor
-        )
+        #return self.llm_model.generate(
+        #    inputs_embeds=inputs_embeds,
+        #    attention_mask=attention_mask,
+        #    generation_config=generation_config,
+        #    logits_processor=logits_processor
+        #)

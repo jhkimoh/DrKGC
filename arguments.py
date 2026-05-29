@@ -37,7 +37,7 @@ class Arguments:
     ## use_align 파트
     use_align: bool = field(default=False, metadata={"help":"True for using align model"})
     lm_loss: bool = field(default=False)
-    beta: float = field(default=1.0)
+    beta: float = field(default=0.01)
 
 @dataclass
 class FinetuningArguments(Seq2SeqTrainingArguments):

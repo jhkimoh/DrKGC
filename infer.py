@@ -21,7 +21,7 @@ from peft import LoraConfig, get_peft_model, PeftModelForCausalLM, prepare_model
 
 from arguments import Arguments, FinetuningArguments, GenerationArguments
 from data import DataModule, QueryCollator
-from model import GraphEnhancer, DrKGC, DrKGC_enhanced, KG_enhanced
+from model import GraphEnhancer, DrKGC, DrKGC_enhanced, KG_enhanced, DrKGC_align, KG_align
 
 from torch.cuda.amp import autocast
 
@@ -34,8 +34,8 @@ load_dotenv()
 
 
 DATASET_METADATA = {
-    "fb15k237": {"E_dim": 14541, "R_dim": 237, "kgc_loss_weight":0.01},
-    "wn18rr": {"E_dim": 40943, "R_dim": 11, "kgc_loss_weight":0.03},
+    "fb15k237": {"E_dim": 14541, "R_dim": 237, "kgc_loss_weight":0.005},
+    "wn18rr": {"E_dim": 40943, "R_dim": 11, "kgc_loss_weight":0.01},
 }
 KGE_MODEL={"fb15k237":{"R_dim":1000,"gamma":9.0}, "wn18rr":{"R_dim":500,"gamma":6.0}}
 
@@ -50,6 +50,10 @@ class Evaluator:
 
         self.output_dir = os.path.dirname(args.checkpoint_dir)
         self.log_file_path = os.path.join(self.output_dir, 'metrics.txt')
+
+        file_path = os.path.join(args.dataset_path,'id2entity.json')
+        with open(file_path, 'r', encoding='utf-8') as f:
+            self.id2entity = {int(k): v for k, v in json.load(f).items()}
 
 
     @torch.no_grad()
@@ -67,7 +71,7 @@ class Evaluator:
             input_ids = inputs.input_ids.cuda() 
             self.generation_config.eos_token_id = self.tokenizer.eos_token_id 
             subgraph = [ex['subgraph']] if 'subgraph' in ex else None
-            if self.args.use_enhanced:
+            if self.args.use_enhanced or self.args.use_align:
                 attention_mask = inputs.attention_mask.cuda()
                 triple_ids = torch.LongTensor([ex['triple_id']]).cuda() 
                 is_predicted_tail = torch.BoolTensor([ex['type']=='predicted_tail']).cuda()
@@ -89,10 +93,22 @@ class Evaluator:
                     subgraph=subgraph, 
                     generation_config=self.generation_config,
                 )
-            generated.append(output.sequences[0].cpu().numpy().tolist())
+            ## align
+            if self.args.use_align:
+                top1_id = torch.argmax(output, dim=-1).item()
+                generated.append(top1_id)
+            else:
+                generated.append(output.sequences[0].cpu().numpy().tolist())
             ex.pop('input') # 'input' 키를 삭제하면서 그 value 반환 
-        
-        batch_preds = self.tokenizer.batch_decode(generated, skip_special_tokens=True)
+
+        if self.args.use_align:
+            #breakpoint()
+            batch_preds = [] # generated 길이 6268(wn18rr)
+            for ent_id in generated:
+                ent_str = self.id2entity.get(ent_id, f"[UNKNOWN_ID_{ent_id}]")
+                batch_preds.append(ent_str)
+        else:
+            batch_preds = self.tokenizer.batch_decode(generated, skip_special_tokens=True)
         for ex_idx, ex in enumerate(dataset):
             target = ex.pop('output')
             rank = ex['rank']
@@ -125,8 +141,8 @@ class Evaluator:
         with open(self.log_file_path, 'w', encoding='utf-8') as log_file:
             log_line = f'ranking metrics: {metrics}\n'
             log_file.write(log_line)
-
-        wandb.log(metrics)
+        if args.use_wandb:
+            wandb.log(metrics)
         return preds
 
 
@@ -173,22 +189,29 @@ if __name__ == '__main__':
     ckpt_dir = Path(args.checkpoint_dir)  
     state = torch.load(ckpt_dir / "graph_model.bin", map_location="cpu")
     embed_model.load_state_dict(state)
+    breakpoint()
+    dataset_name = os.path.basename(args.dataset_path)
+    if dataset_name not in DATASET_METADATA:
+        raise ValueError(f"Unsupported dataset: {dataset_name}. Supported datasets: {list(DATASET_METADATA.keys())}")
+    E_dim = DATASET_METADATA[dataset_name]["E_dim"]
+    R_dim = DATASET_METADATA[dataset_name]["R_dim"]
+    kgc_loss_weight = DATASET_METADATA[dataset_name]["kgc_loss_weight"]
+    if dataset_name not in KGE_MODEL:
+        raise ValueError(f"Unsupported KGE model: {args.kge_model_name}. Supported models: {list(KGE_MODEL.keys())}")
+    R_hidden = KGE_MODEL[dataset_name]['R_dim']
+    gamma = KGE_MODEL[dataset_name]['gamma']
     if args.use_enhanced:
-        dataset_name = os.path.basename(args.dataset_path)
-        if dataset_name not in DATASET_METADATA:
-            raise ValueError(f"Unsupported dataset: {dataset_name}. Supported datasets: {list(DATASET_METADATA.keys())}")
-        E_dim = DATASET_METADATA[dataset_name]["E_dim"]
-        R_dim = DATASET_METADATA[dataset_name]["R_dim"]
-        kgc_loss_weight = DATASET_METADATA[dataset_name]["kgc_loss_weight"]
-        if dataset_name not in KGE_MODEL:
-            raise ValueError(f"Unsupported KGE model: {args.kge_model_name}. Supported models: {list(KGE_MODEL.keys())}")
-        R_hidden = KGE_MODEL[dataset_name]['R_dim']
-        gamma = KGE_MODEL[dataset_name]['gamma']
         enhanced_model = KG_enhanced(E_dim, R_dim, model.config.hidden_size, args.rand_neg, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
         enhanced_state = torch.load(ckpt_dir / "enhanced_model.bin", map_location="cpu")
         enhanced_model.load_state_dict(enhanced_state)
         enhanced_model.cuda()
         model = DrKGC_enhanced(tokenizer,model,embed_model,enhanced_model,kgc_loss_weight)
+    elif args.use_align:
+        align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.beta, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
+        align_state = torch.load(ckpt_dir / "align_model.bin", map_location="cpu")
+        align_model.load_state_dict(align_state)
+        align_model.cuda()
+        model = DrKGC_align(tokenizer, model, embed_model, align_model, args.lm_loss, kgc_loss_weight)
     else:
         model = DrKGC(tokenizer, model, embed_model)
 
