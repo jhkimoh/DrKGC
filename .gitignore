@@ -16,3 +16,7 @@ env/
 .DS_Store
 .env
 error_analysis/
+*.zip
+KG_data/
+TransE_FB15k-237_0/
+TransE_wn18rr_0/

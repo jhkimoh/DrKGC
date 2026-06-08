@@ -213,7 +213,14 @@ def train():
         data_module = make_data_module_extract(args, tokenizer)
         trainer = CustomTrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
     elif args.use_align:
-        align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.beta, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
+        if args.checkpoint_path is not None:
+            #breakpoint()
+            kge_state_dict = torch.load(args.checkpoint_path, map_location="cpu")
+            pretrained_ent = kge_state_dict['model_state_dict']['entity_embedding']
+            pretrained_rel = kge_state_dict['model_state_dict']['relation_embedding']
+            align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.beta, pretrained_ent=pretrained_ent, pretrained_rel=pretrained_rel, freeze_embeddings=args.freeze_embeddings, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
+        else:
+            align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.beta, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
         model = DrKGC_align(tokenizer, model, embed_model, align_model, args.lm_loss, kgc_loss_weight)
         data_module = make_data_module_extract(args, tokenizer)
         trainer = CustomTrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)

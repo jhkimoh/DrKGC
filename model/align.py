@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import math 
 
 class KG_align(nn.Module):
-    def __init__(self,E, R, hidden_dim, rand_neg, beta, KGE_model_name='TransE', head_num=1, R_dim=1000, attention_dim=1024, gamma=18, num_neg_samples = 256):
+    def __init__(self,E, R, hidden_dim, rand_neg, beta, pretrained_ent=None, pretrained_rel=None, freeze_embeddings=True, KGE_model_name='TransE', head_num=1, R_dim=1000, attention_dim=1024, gamma=18, num_neg_samples = 256):
         super().__init__()
         ## 0. 공통 정의 E(entity 개수) R(relation 개수) 
         # E_dim(ent embedding의 hidden dim) R_dim(rel embedding의 hidden dim) 
@@ -30,18 +30,28 @@ class KG_align(nn.Module):
             torch.Tensor([(self.gamma.item() + self.epsilon) / self.H]), 
             requires_grad=False
         )
-        self.entity_embedding = nn.Parameter(torch.zeros(self.E, self.E_dim))
-        nn.init.uniform_(
-            tensor=self.entity_embedding, 
-            a=-self.embedding_range.item(), 
-            b=self.embedding_range.item()
-        )
-        self.relation_embedding = nn.Parameter(torch.zeros(self.R, self.R_dim))
-        nn.init.uniform_(
-            tensor=self.relation_embedding, 
-            a=-self.embedding_range.item(), 
-            b=self.embedding_range.item()
-        )
+        #breakpoint()
+        self.freeze_embeddings = freeze_embeddings
+        if pretrained_ent is not None:
+            clean_ent = pretrained_ent.detach().clone()
+            self.entity_embedding = nn.Parameter(clean_ent, requires_grad=(not self.freeze_embeddings))
+        else:
+            self.entity_embedding = nn.Parameter(torch.zeros(self.E, self.E_dim))
+            nn.init.uniform_(
+                tensor=self.entity_embedding, 
+                a=-self.embedding_range.item(), 
+                b=self.embedding_range.item()
+            )
+        if pretrained_rel is not None:
+            clean_rel = pretrained_rel.detach().clone()
+            self.relation_embedding = nn.Parameter(clean_rel, requires_grad=(not self.freeze_embeddings))
+        else:
+            self.relation_embedding = nn.Parameter(torch.zeros(self.R, self.R_dim))
+            nn.init.uniform_(
+                tensor=self.relation_embedding, 
+                a=-self.embedding_range.item(), 
+                b=self.embedding_range.item()
+            )
         ## 1. KGC loss 를 위한 W_q, W_k, W_v 정의
         self.W_q = nn.Linear(self.H, self.E_dim, bias=False)
         if self.dim_different:
@@ -215,7 +225,33 @@ class KG_align(nn.Module):
 
     def forward(self, last_hidden_state, triple_ids, entity_ids, is_predicted_tail, is_infer):
         # kge_loss, align_loss, lm_loss(는 drkgc에서)
-        #breakpoint()
+        # original_ckpt_path = "/home/jovyan/irrlab/junsik/DrKGC/TransE_FB15k-237_0/checkpoint"
+        # import os
+        # breakpoint()
+        # if os.path.isfile(original_ckpt_path):
+        #     # 1. 원본 가중치 로드 (현재 모델의 디바이스와 상관없이 cpu에 먼저 올림)
+        #     kge_state_dict = torch.load(original_ckpt_path, map_location="cpu")
+        #     pretrained_ent = kge_state_dict['model_state_dict']['entity_embedding']
+        #     pretrained_rel = kge_state_dict['model_state_dict']['relation_embedding']
+            
+        #     # 2. 현재 모델의 임베딩을 CPU로 복사해와서 비교
+        #     # (requires_grad=False 라도 안전하게 detach().cpu() 사용)
+        #     current_ent = self.entity_embedding.detach().cpu()
+        #     current_rel = self.relation_embedding.detach().cpu()
+            
+        #     # 3. 텐서 형태(Shape)가 일치하는지 먼저 확인
+        #     assert pretrained_ent.shape == current_ent.shape, f"Entity Shape 불일치! 원본:{pretrained_ent.shape}, 현재:{current_ent.shape}"
+        #     assert pretrained_rel.shape == current_rel.shape, f"Relation Shape 불일치! 원본:{pretrained_rel.shape}, 현재:{current_rel.shape}"
+            
+        #     # 4. 값 자체가 완벽하게 동일한지 확인 (torch.allclose 사용)
+        #     # atol(Absolute Tolerance)은 부동소수점 오차를 고려해 1e-6 정도로 줍니다.
+        #     is_ent_same = torch.allclose(pretrained_ent, current_ent, atol=1e-6)
+        #     is_rel_same = torch.allclose(pretrained_rel, current_rel, atol=1e-6)
+            
+        #     print(f"[DEBUG] 임베딩 Freeze 유지 여부 확인:")
+        #     print(f" - Entity Embedding 일치 여부: {is_ent_same}")
+        #     print(f" - Relation Embedding 일치 여부: {is_rel_same}")
+        last_hidden_state = last_hidden_state.float()
         if is_infer:# infer 모든 t에 대해 ranking 
             # (1) V_final 구하기 
             query = self.W_q(last_hidden_state) # [1,4096]
@@ -229,6 +265,7 @@ class KG_align(nn.Module):
             delta = torch.norm(query - temp, p=1, dim=-1) # [1]
             alpha = torch.exp(- self.beta * delta) # beta 2개 고르기 +arg에 추가 
             V_final = alpha * query + (1-alpha) * temp # [1,500]
+            V_final = temp ## alpha=0으로 고정 
             # (2) score 구하기 모든 entity emb에 대해 계산 
             all_entities = self.entity_embedding # [40943,500]
             distances = torch.cdist(V_final, all_entities, p=1) # [1,40943]
@@ -237,7 +274,10 @@ class KG_align(nn.Module):
         else:
             batch_size = entity_ids.size(0)
             rand_entity_ids = torch.randint(0, self.E, (batch_size, self.num_neg_samples), device=entity_ids.device)
-            kge_loss = self.KGE_loss(triple_ids, entity_ids, is_predicted_tail, rand_entity_ids)
+            if self.freeze_embeddings:
+                kge_loss = torch.tensor(0.0, device=entity_ids.device)
+            else:
+                kge_loss = self.KGE_loss(triple_ids, entity_ids, is_predicted_tail, rand_entity_ids)
             align_loss = self.Align_loss(last_hidden_state, triple_ids, entity_ids, is_predicted_tail, rand_entity_ids)
             return {
                 "align_loss": align_loss,

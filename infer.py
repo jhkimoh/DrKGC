@@ -102,7 +102,7 @@ class Evaluator:
             ex.pop('input') # 'input' 키를 삭제하면서 그 value 반환 
 
         if self.args.use_align:
-            #breakpoint()
+            breakpoint()
             batch_preds = [] # generated 길이 6268(wn18rr)
             for ent_id in generated:
                 ent_str = self.id2entity.get(ent_id, f"[UNKNOWN_ID_{ent_id}]")
@@ -159,8 +159,8 @@ if __name__ == '__main__':
         if wandb_api_key:
             wandb.login(key=wandb_api_key)
             wandb.init(
-                project="DrKGC-Experiments", 
-                name=args.run_name, # 예: Eval-checkpoint-final
+                project="DrKGC-Experiments-Align-alpha-zero", 
+                name=args.checkpoint_dir, # 예: Eval-checkpoint-final
                 config=vars(args) # 하이퍼파라미터도 같이 저장
             )
         else:
@@ -189,7 +189,7 @@ if __name__ == '__main__':
     ckpt_dir = Path(args.checkpoint_dir)  
     state = torch.load(ckpt_dir / "graph_model.bin", map_location="cpu")
     embed_model.load_state_dict(state)
-    breakpoint()
+    #breakpoint()
     dataset_name = os.path.basename(args.dataset_path)
     if dataset_name not in DATASET_METADATA:
         raise ValueError(f"Unsupported dataset: {dataset_name}. Supported datasets: {list(DATASET_METADATA.keys())}")
@@ -214,9 +214,11 @@ if __name__ == '__main__':
         model = DrKGC_align(tokenizer, model, embed_model, align_model, args.lm_loss, kgc_loss_weight)
     else:
         model = DrKGC(tokenizer, model, embed_model)
-
-    model = model.half()
-    
+    if hasattr(model, 'llm_model'):
+        model.llm_model = model.llm_model.half()
+    if hasattr(model, 'embed_model'):
+        model.embed_model = model.embed_model.half()
+    #model = model.half()
     model.cuda()
     model.eval()
 

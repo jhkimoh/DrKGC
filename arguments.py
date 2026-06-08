@@ -38,6 +38,8 @@ class Arguments:
     use_align: bool = field(default=False, metadata={"help":"True for using align model"})
     lm_loss: bool = field(default=False)
     beta: float = field(default=0.01)
+    checkpoint_path: str = field(default=None)
+    freeze_embeddings: bool = field(default=True)
 
 @dataclass
 class FinetuningArguments(Seq2SeqTrainingArguments):
@@ -51,7 +53,7 @@ class FinetuningArguments(Seq2SeqTrainingArguments):
     num_train_epochs: float = field(default=15.0)
     per_device_train_batch_size: int = field(default=16)
     gradient_accumulation_steps: int = field(default=1)
-    dataloader_num_workers: int = field(default=32)
+    dataloader_num_workers: int = field(default=16) # 32에서 16으로 변경 
 
     optim: str = field(default='paged_adamw_32bit', metadata={"help": 'Optimizer'})
     learning_rate: float = field(default=0.0002)
