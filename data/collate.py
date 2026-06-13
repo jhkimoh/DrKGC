@@ -131,6 +131,14 @@ class QueryCollator_extract(QueryCollator):
         triple_ids = torch.tensor([ex['triple_id'] for ex in instances], dtype=torch.long)
         is_predicted_tail = torch.tensor(is_predicted_tail, dtype=torch.bool)
         extract_positions = torch.tensor(extract_positions, dtype=torch.long)
+        if 'triplet_id' in instances[0]:
+            triplet_ids = torch.tensor([ex['triplet_id'] for ex in instances], dtype=torch.long)
+        else:
+            triplet_ids = triple_ids
+        if 'topk_id' in instances[0]:
+            topk_ids = torch.tensor([ex['topk_id'] for ex in instances], dtype=torch.long)
+        else:
+            topk_ids = entity_ids
         data_dict = {
             'input_ids': input_ids,
             'attention_mask': (input_ids != self.tokenizer.pad_token_id).long(),
@@ -141,6 +149,8 @@ class QueryCollator_extract(QueryCollator):
             "triple_ids": triple_ids,
             "is_predicted_tail": is_predicted_tail,
             'extract_positions': extract_positions,
+            "triplet_ids": triplet_ids, 
+            "topk_ids": topk_ids
         }
 
         return data_dict

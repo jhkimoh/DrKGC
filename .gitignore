@@ -20,3 +20,5 @@ error_analysis/
 KG_data/
 TransE_FB15k-237_0/
 TransE_wn18rr_0/
+dataset_merged/
+DIFT-dataset/
