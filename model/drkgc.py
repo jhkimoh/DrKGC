@@ -266,7 +266,7 @@ class DrKGC_align(DrKGC):
         torch.save(self.align_model.state_dict(), save_dir / "align_model.bin")
 
     @torch.no_grad()
-    def generate(self, input_ids, attention_mask, query_ids, entity_ids, triple_ids, is_predicted_tail, subgraph=None, generation_config=None):
+    def generate(self, input_ids, attention_mask, query_ids, entity_ids, triple_ids, is_predicted_tail, triplet_ids, topk_ids, subgraph=None, generation_config=None):
         # 1. 입력 임베딩 준비
         inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
         # 2. LLM을 한 번 통과시켜서 H (last_hidden_states) 추출
@@ -280,8 +280,8 @@ class DrKGC_align(DrKGC):
         last_hidden_states = outputs.hidden_states[-1] # [1,315,4096]
         last_hidden_state = last_hidden_states[:, -1, :] # [1, 4096]
         # 우선 train부터 완료하고 돌아와서 다시
-        #breakpoint()
-        scores = self.align_model(last_hidden_state, triple_ids, entity_ids, is_predicted_tail, True)
+        breakpoint()
+        scores = self.align_model(last_hidden_state, triplet_ids, topk_ids, is_predicted_tail, True)
         return scores # [1,40943]
         #if generation_config is None:
         #    generation_config = GenerationConfig()

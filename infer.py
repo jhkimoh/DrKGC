@@ -30,6 +30,7 @@ torch.cuda.empty_cache()
 
 import wandb
 from dotenv import load_dotenv
+import collections
 load_dotenv()
 
 
@@ -54,13 +55,47 @@ class Evaluator:
         file_path = os.path.join(args.dataset_path,'id2entity.json')
         with open(file_path, 'r', encoding='utf-8') as f:
             self.id2entity = {int(k): v for k, v in json.load(f).items()}
+        # all_true_triple 만들기... 
+        with open(os.path.join(args.data_path, 'entities.dict')) as fin:
+            entity2id = dict()
+            for line in fin:
+                eid, entity = line.strip().split('\t')
+                entity2id[entity] = int(eid)
 
+        with open(os.path.join(args.data_path, 'relations.dict')) as fin:
+            relation2id = dict()
+            for line in fin:
+                rid, relation = line.strip().split('\t')
+                relation2id[relation] = int(rid)
+        self.train_triples = self.read_triple(os.path.join(args.data_path, 'train.txt'), entity2id, relation2id)
+        self.valid_triples = self.read_triple(os.path.join(args.data_path, 'valid.txt'), entity2id, relation2id)
+        self.test_triples = self.read_triple(os.path.join(args.data_path, 'test.txt'), entity2id, relation2id)
+        breakpoint()
+        self.all_true_triples = self.train_triples + self.valid_triples + self.test_triples
+        self.hr2t = collections.defaultdict(set)
+        self.tr2h = collections.defaultdict(set)
+        for h, r, t in self.all_true_triples:
+            self.hr2t[(h, r)].add(t)
+            self.tr2h[(t, r)].add(h)
+
+    @staticmethod
+    def read_triple(file_path, entity2id, relation2id):
+        '''
+        Read triples and map them into ids.
+        '''
+        triples = []
+        with open(file_path) as fin:
+            for line in fin:
+                h, r, t = line.strip().split('\t')
+                triples.append((entity2id[h], relation2id[r], entity2id[t]))
+        return triples
 
     @torch.no_grad()
     def ranking_metrics(self, dataset):
         self.model.eval()
 
         preds = []
+        logs = []
         ranks = np.array([])
 
         generated = []
@@ -75,6 +110,8 @@ class Evaluator:
                 attention_mask = inputs.attention_mask.cuda()
                 triple_ids = torch.LongTensor([ex['triple_id']]).cuda() 
                 is_predicted_tail = torch.BoolTensor([ex['type']=='predicted_tail']).cuda()
+                triplet_ids = torch.LongTensor([ex['triplet_id']]).cuda() 
+                topk_ids = torch.LongTensor([ex['topk_id']]).cuda() 
                 output = self.model.generate(
                     input_ids=input_ids, 
                     attention_mask=attention_mask,#
@@ -84,6 +121,8 @@ class Evaluator:
                     is_predicted_tail=is_predicted_tail,#
                     subgraph=subgraph, 
                     generation_config=self.generation_config,
+                    triplet_ids = triplet_ids,
+                    topk_ids = topk_ids
                 ) # outputs.keys() 'sequences' 'past_key_values'
             else:
                 output = self.model.generate(
@@ -94,46 +133,80 @@ class Evaluator:
                     generation_config=self.generation_config,
                 )
             ## align
-            if self.args.use_align:
-                top1_id = torch.argmax(output, dim=-1).item()
-                generated.append(top1_id)
+            if self.args.use_align: 
+                breakpoint()
+                if 'triplet_id' in ex: # filtered_bias 
+                    h,r,t = ex['triplet_id']
+                    pred_type = ex.get('type')
+                    target_id = t if pred_type == 'predicted_tail' else h
+                    target_score = output[0, target_id].clone()
+                    if pred_type == 'predicted_tail':
+                        true_tails = self.hr2t.get((h, r), set())
+                        for true_t in true_tails:
+                            if true_t != t: # 타겟 제외
+                                output[0, true_t] = target_score - 1.0
+                    else:
+                        true_heads = self.tr2h.get((t, r), set())
+                        for true_h in true_heads:
+                            if true_h != h: # 타겟 제외
+                                output[0, true_h] = target_score - 1.0
+                argsort = torch.argsort(output, dim=1, descending=True)
+                ranking_tensor = (argsort[0, :] == target_id).nonzero()
+                assert ranking_tensor.size(0) == 1
+                ranking = 1 + ranking_tensor.item()
+                logs.append({
+                        'MRR': 1.0 / ranking,
+                        'MR': float(ranking),
+                        'HITS@1': 1.0 if ranking <= 1 else 0.0,
+                        'HITS@3': 1.0 if ranking <= 3 else 0.0,
+                        'HITS@10': 1.0 if ranking <= 10 else 0.0,
+                    })
+                top1_id = argsort[0, 0].item()
+                ex['target'] = ex.get('output', '')
+                ex['pred_rank'] = ranking
+                ex['pred'] = self.id2entity.get(top1_id, f"[UNKNOWN_ID_{top1_id}]")
+                if 'input' in ex: ex.pop('input')
+                preds.append(ex)
+                #generated.append(top1_id)
             else:
                 generated.append(output.sequences[0].cpu().numpy().tolist())
-            ex.pop('input') # 'input' 키를 삭제하면서 그 value 반환 
+                ex.pop('input') # 'input' 키를 삭제하면서 그 value 반환 
 
         if self.args.use_align:
-            breakpoint()
-            batch_preds = [] # generated 길이 6268(wn18rr)
-            for ent_id in generated:
-                ent_str = self.id2entity.get(ent_id, f"[UNKNOWN_ID_{ent_id}]")
-                batch_preds.append(ent_str)
+            for metric in logs[0].keys():
+                metrics[metric] = sum([log[metric] for log in logs]) / len(logs)
+            metrics = {k: round(v, 8) for k, v in metrics.items()}
+            metrics = {
+                'mrr': metrics['MRR'], 'mr': metrics['MR'],
+                'hits1': metrics['HITS@1'], 'hits3': metrics['HITS@3'], 'hits10': metrics['HITS@10']
+            }
         else:
             batch_preds = self.tokenizer.batch_decode(generated, skip_special_tokens=True)
-        for ex_idx, ex in enumerate(dataset):
-            target = ex.pop('output')
-            rank = ex['rank']
-            pred = str(batch_preds[ex_idx]).strip()
+            for ex_idx, ex in enumerate(dataset):
+                target = ex.pop('output')
+                rank = ex['rank']
+                pred = str(batch_preds[ex_idx]).strip()
 
-            topk_names = ex['rank_entities']
-            if target == pred:
-                rank = 1
-            else:    
-                if pred not in set(topk_names) or topk_names.index(pred) >= rank:
-                    rank += 1
+                topk_names = ex['rank_entities']
+                if target == pred:
+                    rank = 1
+                else:    
+                    if pred not in set(topk_names) or topk_names.index(pred) >= rank:
+                        rank += 1
+                
+                ex['target'] = target
+                ex['pred_rank'] = rank
+                ex['pred'] = pred
+                preds.append(ex)
+                ranks = np.append(ranks, rank)
             
-            ex['target'] = target
-            ex['pred_rank'] = rank
-            ex['pred'] = pred
-            preds.append(ex)
-            ranks = np.append(ranks, rank)
-        
-        metrics = {
-        'mrr': np.mean(1. / ranks),
-        'hits1': np.mean(ranks <= 1),
-        'hits3': np.mean(ranks <= 3),
-        'hits10': np.mean(ranks <= 10),
-        }
-        metrics = {k: round(v, 8) for k, v in metrics.items()}
+            metrics = {
+            'mrr': np.mean(1. / ranks),
+            'hits1': np.mean(ranks <= 1),
+            'hits3': np.mean(ranks <= 3),
+            'hits10': np.mean(ranks <= 10),
+            }
+            metrics = {k: round(v, 8) for k, v in metrics.items()}
         
         print("ranking metrics:")
         print(metrics)
