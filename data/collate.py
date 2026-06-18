@@ -6,6 +6,7 @@ from torch.nn.utils.rnn import pad_sequence
 import transformers
 from .dataset import DataModule 
 import os
+import numpy as np
 
 @dataclass
 class QueryCollator:
@@ -77,7 +78,8 @@ class QueryCollator_extract(QueryCollator):
             for line in fin:
                 eid, entity = line.strip().split('\t')
                 entity2id[entity] = int(eid)
-
+        self.nentity = len(entity2id)
+        self.num_neg = getattr(self.args, 'num_neg', 256)
         with open(os.path.join(args.data_path, 'relations.dict')) as fin:
             relation2id = dict()
             for line in fin:
@@ -185,6 +187,30 @@ class QueryCollator_extract(QueryCollator):
         ## rand_entity_ids_batch, subsamplig_weight_batch 만들기 
         rand_entity_ids_batch = []
         subsampling_weight_batch = []
+        for ex in instances:
+            h,r,t = ex.get('triplet_id')
+            is_tail = (ex['type'] == 'predicted_tail')
+            subsampling_weight = self.count[(h, r)] + self.count[(t, -r-1)]
+            weight = np.sqrt(1.0 / (subsampling_weight))
+            subsampling_weight_batch.append(weight)
+            hard_negatives = np.array(ex['rank_entities_id'], dtype=np.int64)
+            if is_tail:
+                true_ents = self.true_tail.get((h, r), np.array([]))
+            else:
+                true_ents = self.true_head.get((r, t), np.array([]))
+            mask_hard = np.in1d(hard_negatives, true_ents, assume_unique=True, invert=True)
+            hard_negatives = hard_negatives[mask_hard]
+            negative_sample_list = [hard_negatives]
+            current_size = len(hard_negatives)
+            while current_size < self.num_neg:
+                num_random_needed = self.num_neg - current_size
+                random_sample = np.random.randint(self.nentity, size=num_random_needed * 2)
+                mask_true = np.in1d(random_sample, true_ents, assume_unique=True, invert=True)
+                random_sample = random_sample[mask_true]
+                negative_sample_list.append(random_sample)
+                current_size += random_sample.size
+            negative_sample = np.concatenate(negative_sample_list)[:self.num_neg]
+            rand_entity_ids_batch.append(torch.tensor(negative_sample, dtype=torch.long))
 
         input_ids = pad_sequence(input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id)
         labels = pad_sequence(labels, batch_first=True, padding_value=-100)
@@ -214,8 +240,8 @@ class QueryCollator_extract(QueryCollator):
             'extract_positions': extract_positions,
             "triplet_ids": triplet_ids, 
             "topk_ids": topk_ids,
-            #"rand_entity_ids": torch.stack(rand_entity_ids_batch, dim=0),
-            #"subsamplig_weight": torch.FloatTensor(subsampling_weight_batch)
+            "rand_entity_ids": torch.stack(rand_entity_ids_batch, dim=0),
+            "subsampling_weight": torch.FloatTensor(subsampling_weight_batch)
         }
 
         return data_dict

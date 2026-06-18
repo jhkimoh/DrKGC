@@ -229,13 +229,15 @@ class DrKGC_enhanced(DrKGC):
         )
 
 class DrKGC_align(DrKGC):
-    def __init__(self, tokenizer, llm_model, graph_model, align_model, lm_loss, kgc_loss_weight):
+    def __init__(self, tokenizer, llm_model, graph_model, align_model, lm_loss, kge_loss, struct_loss, kgc_loss_weight):
         super().__init__(tokenizer, llm_model, graph_model)
         self.align_model = align_model
         self.lm_loss = lm_loss
+        self.kge_loss = kge_loss
+        self.struct_loss = struct_loss
         self.align_loss_weight = kgc_loss_weight
 
-    def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail, extract_positions, triplet_ids, topk_ids):#, rand_entity_ids, subsampling_weight):
+    def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail, extract_positions, triplet_ids, topk_ids, rand_entity_ids, subsampling_weight):
         inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
         outputs = self.llm_model(
             inputs_embeds=inputs_embeds, 
@@ -249,15 +251,12 @@ class DrKGC_align(DrKGC):
         batch_indices = torch.arange(batch_size, device=last_hidden_states.device) # tensor([0,1,2,3,4,5,6,7])
         last_hidden_state = last_hidden_states[batch_indices, extract_positions]
         #breakpoint()
-        align_outputs = self.align_model(last_hidden_state, triplet_ids, topk_ids, is_predicted_tail, False)# rand_entity_ids, subsampling_weight, False)
-
-        outputs["lm_loss"] = outputs.loss
+        align_outputs = self.align_model(last_hidden_state, triplet_ids, topk_ids, is_predicted_tail, False, rand_entity_ids, subsampling_weight)
+        outputs["lm_loss"] = outputs.loss * self.lm_loss
         outputs["align_loss"] = align_outputs["align_loss"] * self.align_loss_weight
-        outputs["kge_loss"] = align_outputs["kge_loss"]
-        if self.lm_loss:
-            outputs["loss"] = outputs["align_loss"] + outputs["kge_loss"] + outputs["lm_loss"]
-        else:
-            outputs["loss"] = outputs["align_loss"] + outputs["kge_loss"]
+        outputs["kge_loss"] = align_outputs["kge_loss"] * self.kge_loss
+        outputs["struct_loss"] = align_outputs["struct_loss"] * self.struct_loss
+        outputs["loss"] = outputs["struct_loss"] + outputs["kge_loss"] + outputs["align_loss"] + outputs["lm_loss"]
         return outputs
 
     def save_pretrained(self, save_dir):

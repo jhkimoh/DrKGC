@@ -36,10 +36,12 @@ class Arguments:
     kge_model_name: str = field(default='TransE')
     ## use_align 파트
     use_align: bool = field(default=False, metadata={"help":"True for using align model"})
-    lm_loss: bool = field(default=False)
+    lm_loss: float = field(default=0.0)
+    struct_loss: float = field(default=0.0)
+    kge_loss: float = field(default=0.0)
+    uni_weight: bool = field(default=False)
     beta: float = field(default=0.01)
     checkpoint_path: str = field(default=None)
-    freeze_embeddings: bool = field(default=True)
     data_path: str = field(default=None, metadata={"help":"kg data path"})
 
 @dataclass

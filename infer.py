@@ -141,8 +141,8 @@ class Evaluator:
                 #breakpoint()
                 h,r,t = ex['triplet_id']
                 pred_type = ex.get('type')
-                mode_str = "tail-batch" if pred_type == 'predicted_tail' else "head-batch"
-                query_key = f"{h}_{r}_{t}_{mode_str}"
+                #mode_str = "tail-batch" if pred_type == 'predicted_tail' else "head-batch"
+                #query_key = f"{h}_{r}_{t}_{mode_str}"
                 target_id = t if pred_type == 'predicted_tail' else h
                 target_score = output[0, target_id].clone()
                 if pred_type == 'predicted_tail':
@@ -316,11 +316,11 @@ if __name__ == '__main__':
         #     align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.beta, 
         #                            pretrained_ent=pretrained_ent, pretrained_rel=pretrained_rel, 
         #                            KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
-        align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.beta, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
+        align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.beta, args.uni_weight, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
         align_state = torch.load(ckpt_dir / "align_model.bin", map_location="cpu")
         align_model.load_state_dict(align_state)
         align_model.cuda()
-        model = DrKGC_align(tokenizer, model, embed_model, align_model, args.lm_loss, kgc_loss_weight)
+        model = DrKGC_align(tokenizer, model, embed_model, align_model, args.lm_loss, args.kge_loss, args.struct_loss, kgc_loss_weight)
     else:
         model = DrKGC(tokenizer, model, embed_model)
     if hasattr(model, 'llm_model'):
