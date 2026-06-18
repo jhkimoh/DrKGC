@@ -235,7 +235,7 @@ class DrKGC_align(DrKGC):
         self.lm_loss = lm_loss
         self.align_loss_weight = kgc_loss_weight
 
-    def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail, extract_positions, triplet_ids, topk_ids):
+    def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail, extract_positions, triplet_ids, topk_ids):#, rand_entity_ids, subsampling_weight):
         inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
         outputs = self.llm_model(
             inputs_embeds=inputs_embeds, 
@@ -249,7 +249,7 @@ class DrKGC_align(DrKGC):
         batch_indices = torch.arange(batch_size, device=last_hidden_states.device) # tensor([0,1,2,3,4,5,6,7])
         last_hidden_state = last_hidden_states[batch_indices, extract_positions]
         #breakpoint()
-        align_outputs = self.align_model(last_hidden_state, triplet_ids, topk_ids, is_predicted_tail, False)
+        align_outputs = self.align_model(last_hidden_state, triplet_ids, topk_ids, is_predicted_tail, False)# rand_entity_ids, subsampling_weight, False)
 
         outputs["lm_loss"] = outputs.loss
         outputs["align_loss"] = align_outputs["align_loss"] * self.align_loss_weight
@@ -280,7 +280,7 @@ class DrKGC_align(DrKGC):
         last_hidden_states = outputs.hidden_states[-1] # [1,315,4096]
         last_hidden_state = last_hidden_states[:, -1, :] # [1, 4096]
         # 우선 train부터 완료하고 돌아와서 다시
-        breakpoint()
+        #breakpoint()
         scores = self.align_model(last_hidden_state, triplet_ids, topk_ids, is_predicted_tail, True)
         return scores # [1,40943]
         #if generation_config is None:

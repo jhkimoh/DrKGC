@@ -40,6 +40,7 @@ class Arguments:
     beta: float = field(default=0.01)
     checkpoint_path: str = field(default=None)
     freeze_embeddings: bool = field(default=True)
+    data_path: str = field(default=None, metadata={"help":"kg data path"})
 
 @dataclass
 class FinetuningArguments(Seq2SeqTrainingArguments):

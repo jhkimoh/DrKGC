@@ -70,7 +70,6 @@ class Evaluator:
         self.train_triples = self.read_triple(os.path.join(args.data_path, 'train.txt'), entity2id, relation2id)
         self.valid_triples = self.read_triple(os.path.join(args.data_path, 'valid.txt'), entity2id, relation2id)
         self.test_triples = self.read_triple(os.path.join(args.data_path, 'test.txt'), entity2id, relation2id)
-        breakpoint()
         self.all_true_triples = self.train_triples + self.valid_triples + self.test_triples
         self.hr2t = collections.defaultdict(set)
         self.tr2h = collections.defaultdict(set)
@@ -97,7 +96,8 @@ class Evaluator:
         preds = []
         logs = []
         ranks = np.array([])
-
+        #breakpoint()
+        #debug_log_dict={}
         generated = []
         for ex_idx, ex in enumerate(tqdm(dataset)):
             prompt = ex['input']
@@ -110,8 +110,12 @@ class Evaluator:
                 attention_mask = inputs.attention_mask.cuda()
                 triple_ids = torch.LongTensor([ex['triple_id']]).cuda() 
                 is_predicted_tail = torch.BoolTensor([ex['type']=='predicted_tail']).cuda()
-                triplet_ids = torch.LongTensor([ex['triplet_id']]).cuda() 
-                topk_ids = torch.LongTensor([ex['topk_id']]).cuda() 
+                if 'triplet_id' in ex.keys():
+                    triplet_ids = torch.LongTensor([ex['triplet_id']]).cuda() 
+                    topk_ids = torch.LongTensor([ex['topk_id']]).cuda() 
+                else:
+                    triplet_ids = triple_ids
+                    topk_ids = torch.LongTensor([ex['rank_entities_id']]).to(input_ids.device)
                 output = self.model.generate(
                     input_ids=input_ids, 
                     attention_mask=attention_mask,#
@@ -134,22 +138,23 @@ class Evaluator:
                 )
             ## align
             if self.args.use_align: 
-                breakpoint()
-                if 'triplet_id' in ex: # filtered_bias 
-                    h,r,t = ex['triplet_id']
-                    pred_type = ex.get('type')
-                    target_id = t if pred_type == 'predicted_tail' else h
-                    target_score = output[0, target_id].clone()
-                    if pred_type == 'predicted_tail':
-                        true_tails = self.hr2t.get((h, r), set())
-                        for true_t in true_tails:
-                            if true_t != t: # 타겟 제외
-                                output[0, true_t] = target_score - 1.0
-                    else:
-                        true_heads = self.tr2h.get((t, r), set())
-                        for true_h in true_heads:
-                            if true_h != h: # 타겟 제외
-                                output[0, true_h] = target_score - 1.0
+                #breakpoint()
+                h,r,t = ex['triplet_id']
+                pred_type = ex.get('type')
+                mode_str = "tail-batch" if pred_type == 'predicted_tail' else "head-batch"
+                query_key = f"{h}_{r}_{t}_{mode_str}"
+                target_id = t if pred_type == 'predicted_tail' else h
+                target_score = output[0, target_id].clone()
+                if pred_type == 'predicted_tail':
+                    true_tails = self.hr2t.get((h, r), set())
+                    for true_t in true_tails:
+                        if true_t != t: # 타겟 제외
+                            output[0, true_t] = target_score - 1.0
+                else:
+                    true_heads = self.tr2h.get((t, r), set())
+                    for true_h in true_heads:
+                        if true_h != h: # 타겟 제외
+                            output[0, true_h] = target_score - 1.0
                 argsort = torch.argsort(output, dim=1, descending=True)
                 ranking_tensor = (argsort[0, :] == target_id).nonzero()
                 assert ranking_tensor.size(0) == 1
@@ -161,6 +166,19 @@ class Evaluator:
                         'HITS@3': 1.0 if ranking <= 3 else 0.0,
                         'HITS@10': 1.0 if ranking <= 10 else 0.0,
                     })
+                #target_score_val = output[0, target_id].item()
+                # # A. 모든 쿼리 성적표를 JSON 딕셔너리에 저장
+                # debug_log_dict[query_key] = {
+                #     "rank": ranking,
+                #     "target_score": target_score_val,
+                #     "top10_preds": argsort[0, :10].cpu().tolist()
+                # }
+                
+                # # B. 특정 쿼리의 전체 점수 텐서 추출 (.npy)
+                # # 추출하신 RotatE 텐서와 동일한 쿼리를 지정합니다.
+                # if h == 7566 and r == 137 and t == 5182:
+                #     np.save(f"drkgc_tensor_{query_key}.npy", output[0].cpu().numpy())
+                #     print(f"\n🚨 [디버그] {query_key}의 DrKGC 전체 점수 텐서 저장 완료!")
                 top1_id = argsort[0, 0].item()
                 ex['target'] = ex.get('output', '')
                 ex['pred_rank'] = ranking
@@ -173,8 +191,10 @@ class Evaluator:
                 ex.pop('input') # 'input' 키를 삭제하면서 그 value 반환 
 
         if self.args.use_align:
-            for metric in logs[0].keys():
-                metrics[metric] = sum([log[metric] for log in logs]) / len(logs)
+            metrics = {}
+            if len(logs) > 0:
+                for metric in logs[0].keys():
+                    metrics[metric] = sum([log[metric] for log in logs]) / len(logs)
             metrics = {k: round(v, 8) for k, v in metrics.items()}
             metrics = {
                 'mrr': metrics['MRR'], 'mr': metrics['MR'],
@@ -210,7 +230,13 @@ class Evaluator:
         
         print("ranking metrics:")
         print(metrics)
-        
+
+        # if self.args.use_align:
+        #     import json
+        #     with open('drkgc_debug_log.json', 'w', encoding='utf-8') as f:
+        #         json.dump(debug_log_dict, f, indent=4)
+        #     print("\n✅ 모든 쿼리의 순위/Top10 결과를 'drkgc_debug_log.json'에 저장했습니다.")
+
         with open(self.log_file_path, 'w', encoding='utf-8') as log_file:
             log_line = f'ranking metrics: {metrics}\n'
             log_file.write(log_line)
@@ -232,7 +258,7 @@ if __name__ == '__main__':
         if wandb_api_key:
             wandb.login(key=wandb_api_key)
             wandb.init(
-                project="DrKGC-Experiments-Align-alpha-zero", 
+                project="DrKGC-Experiments", 
                 name=args.checkpoint_dir, # 예: Eval-checkpoint-final
                 config=vars(args) # 하이퍼파라미터도 같이 저장
             )
@@ -280,6 +306,16 @@ if __name__ == '__main__':
         enhanced_model.cuda()
         model = DrKGC_enhanced(tokenizer,model,embed_model,enhanced_model,kgc_loss_weight)
     elif args.use_align:
+        # print("⚠️ [DEBUG MODE] 순수 KGE 체크포인트를 로드하여 순위 계산을 테스트합니다.")
+        
+        # if hasattr(args, 'checkpoint_path') and args.checkpoint_path is not None:
+        #     kge_state_dict = torch.load(args.checkpoint_path, map_location="cpu")
+        #     pretrained_ent = kge_state_dict['model_state_dict']['entity_embedding']
+        #     pretrained_rel = kge_state_dict['model_state_dict']['relation_embedding']
+            
+        #     align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.beta, 
+        #                            pretrained_ent=pretrained_ent, pretrained_rel=pretrained_rel, 
+        #                            KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
         align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.beta, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
         align_state = torch.load(ckpt_dir / "align_model.bin", map_location="cpu")
         align_model.load_state_dict(align_state)

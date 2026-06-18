@@ -5,7 +5,7 @@ import torch
 from torch.nn.utils.rnn import pad_sequence
 import transformers
 from .dataset import DataModule 
-
+import os
 
 @dataclass
 class QueryCollator:
@@ -67,12 +67,72 @@ class QueryCollator:
 
 class QueryCollator_extract(QueryCollator):
     def __init__(self, args, tokenizer, source_max_len, target_max_len):
-        # 1. 부모(QueryCollator)의 초기화 코드를 그대로 실행해서 변수들을 세팅합니다.
         super().__init__(args=args, tokenizer=tokenizer, source_max_len=source_max_len, target_max_len=target_max_len)
-        # 2. 부모한테 없는 SAE 전용 변수들만 추가로 세팅합니다.
         self.new_token = args.new_token
         if args.new_token:
             self.extract_id = self.tokenizer.convert_tokens_to_ids('<|extract_kg|>') #int
+        ## all_true_triples 세팅
+        with open(os.path.join(args.data_path, 'entities.dict')) as fin:
+            entity2id = dict()
+            for line in fin:
+                eid, entity = line.strip().split('\t')
+                entity2id[entity] = int(eid)
+
+        with open(os.path.join(args.data_path, 'relations.dict')) as fin:
+            relation2id = dict()
+            for line in fin:
+                rid, relation = line.strip().split('\t')
+                relation2id[relation] = int(rid)
+        self.train_triples = self.read_triple(os.path.join(args.data_path, 'train.txt'), entity2id, relation2id)
+        self.valid_triples = self.read_triple(os.path.join(args.data_path, 'valid.txt'), entity2id, relation2id)
+        self.test_triples = self.read_triple(os.path.join(args.data_path, 'test.txt'), entity2id, relation2id)
+        self.all_true_triples = self.train_triples + self.valid_triples + self.test_triples
+        self.count = self.count_frequency(self.all_true_triples)
+        self.true_head, self.true_tail = self.get_true_head_and_tail(self.all_true_triples)
+
+    @staticmethod
+    def count_frequency(triples, start=4):
+        '''
+        Get frequency of a partial triple like (head, relation) or (relation, tail)
+        The frequency will be used for subsampling like word2vec
+        '''
+        count = {}
+        for head, relation, tail in triples:
+            if (head, relation) not in count:
+                count[(head, relation)] = start
+            else:
+                count[(head, relation)] += 1
+
+            if (tail, -relation-1) not in count:
+                count[(tail, -relation-1)] = start
+            else:
+                count[(tail, -relation-1)] += 1
+        return count
+    
+    @staticmethod
+    def get_true_head_and_tail(triples):
+        '''
+        Build a dictionary of true triples that will
+        be used to filter these true triples for negative sampling
+        '''
+        
+        true_head = {}
+        true_tail = {}
+
+        for head, relation, tail in triples:
+            if (head, relation) not in true_tail:
+                true_tail[(head, relation)] = []
+            true_tail[(head, relation)].append(tail)
+            if (relation, tail) not in true_head:
+                true_head[(relation, tail)] = []
+            true_head[(relation, tail)].append(head)
+
+        for relation, tail in true_head:
+            true_head[(relation, tail)] = np.array(list(set(true_head[(relation, tail)])))
+        for head, relation in true_tail:
+            true_tail[(head, relation)] = np.array(list(set(true_tail[(head, relation)])))                 
+
+        return true_head, true_tail
 
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
         bos_id, eos_id = self.tokenizer.bos_token_id, self.tokenizer.eos_token_id
@@ -122,6 +182,9 @@ class QueryCollator_extract(QueryCollator):
                 lab[start:] = torch.tensor(tgt_ids + [eos_id], dtype=torch.long)
             labels.append(lab)
             is_predicted_tail.append(ex['type']=='predicted_tail')
+        ## rand_entity_ids_batch, subsamplig_weight_batch 만들기 
+        rand_entity_ids_batch = []
+        subsampling_weight_batch = []
 
         input_ids = pad_sequence(input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id)
         labels = pad_sequence(labels, batch_first=True, padding_value=-100)
@@ -150,7 +213,9 @@ class QueryCollator_extract(QueryCollator):
             "is_predicted_tail": is_predicted_tail,
             'extract_positions': extract_positions,
             "triplet_ids": triplet_ids, 
-            "topk_ids": topk_ids
+            "topk_ids": topk_ids,
+            #"rand_entity_ids": torch.stack(rand_entity_ids_batch, dim=0),
+            #"subsamplig_weight": torch.FloatTensor(subsampling_weight_batch)
         }
 
         return data_dict

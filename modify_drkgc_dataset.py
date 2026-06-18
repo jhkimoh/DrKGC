@@ -141,7 +141,7 @@ def load_dict_to_idx(dict_path):
                 id2idx[string_id] = idx
     return id2idx
 
-def append_dift_ids_to_drkgc(drkgc_dir, dift_dir, output_dir, dataset_name, ent2idx, rel2idx):
+def append_dift_ids_to_drkgc(drkgc_dir, dift_dir, output_dir, dataset_name, id2str, ent2idx, rel2idx):
     """
     (Triple + Candidate) 지문으로 매핑하여, 
     DrKGC 데이터에 DIFT의 'topk_ents'를 병합하고 새로운 폴더에 저장합니다.
@@ -164,14 +164,29 @@ def append_dift_ids_to_drkgc(drkgc_dir, dift_dir, output_dir, dataset_name, ent2
             drkgc_data = json.load(f)
         with open(dift_file, 'r', encoding='utf-8') as f:
             dift_data = json.load(f)
-            
+        breakpoint()
         # 1. DIFT 데이터를 딕셔너리로 구축
         dift_dict = {}
         for item in dift_data:
             if 'topk_names' in item and 'triplet' in item and 'topk_ents' in item:
                 candidates = tuple(item['topk_names'])
-                dift_dict[candidates] = {'topk_ents':item['topk_ents'], 'triplet':item['triplet']}
-                
+                triple = item['triplet'].copy()
+                if triple == ["/m/0135g","/film/film/featured_film_locations","/m/032zq6"]:
+                    breakpoint()
+                if item['inverse']:
+                    triple[0] = id2str[item['triplet'][2]]
+                    triple[2] = id2str[item['triplet'][0]]
+                    item['triplet'][0], item['triplet'][2] = item['triplet'][2], item['triplet'][0]
+                else:
+                    triple[0] = id2str[item['triplet'][0]]
+                    triple[2] = id2str[item['triplet'][2]]
+                if 'wn18rr' in dataset_name.lower():
+                    triple[1] = normalize_relation(triple[1])
+                triple = tuple(triple)
+                is_inverse = item.get('inverse')
+                compound_key = (candidates, triple, is_inverse)
+                dift_dict[compound_key] = {'topk_ents':item['topk_ents'], 'triplet':item['triplet']}
+    
         # 2. DrKGC 데이터를 순회하며 매핑 및 Append 진행
         matched_count = 0
         total_count = 0
@@ -180,9 +195,15 @@ def append_dift_ids_to_drkgc(drkgc_dir, dift_dir, output_dir, dataset_name, ent2
             if 'rank_entities' in item and 'triple' in item:
                 total_count += 1
                 candidates = tuple(item['rank_entities'])
+                triplet = tuple(item['triple'])
+                if item["type"]=="predicted_tail":
+                    is_inverse = False
+                else:
+                    is_inverse = True
+                compound_key = (candidates, triplet, is_inverse)
                 # 매핑 성공 시, 기존 데이터를 해치지 않고 새 Key-Value만 추가!
-                if candidates in dift_dict:
-                    dift_info = dift_dict[candidates]
+                if compound_key in dift_dict:
+                    dift_info = dift_dict[compound_key]
                     topk_ents_list = dift_info['topk_ents']
                     raw_triplet = dift_info['triplet']
                     item['topk_ents'] = topk_ents_list
@@ -207,7 +228,8 @@ def append_dift_ids_to_drkgc(drkgc_dir, dift_dir, output_dir, dataset_name, ent2
                     matched_count += 1
                 else:
                     # 매핑 실패한 경우 (확인용)
-                    pass 
+                    breakpoint()
+                    print(f'{triplet} fail!')
                     
         # 3. 새로운 JSON 파일로 예쁘게 저장
         with open(output_file, 'w', encoding='utf-8') as f:
@@ -216,6 +238,7 @@ def append_dift_ids_to_drkgc(drkgc_dir, dift_dir, output_dir, dataset_name, ent2
         print(f"\n=========================================")
         print(f"✅ [{split}] 병합 완료 ({dataset_name.upper()})")
         print(f"  - 전체 DrKGC 데이터 수 : {total_count}")
+        print(f"  - 전체 DIFT 데이터 수 : {len(dift_dict)}")
         print(f"  - 매핑 성공 및 추가 완료: {matched_count}")
         print(f"  - 파일 저장 위치: {output_file}")
 
@@ -230,18 +253,9 @@ if __name__ == '__main__':
     #     drkgc_dir='dataset/fb15k237', 
     #     dift_dir='DIFT-dataset/FB15K237/CoLE/data_KGELlama'
     # )
-    print("\n[ WN18RR 데이터 병합 시작 ]")
-    wn18rr_ent2idx = load_dict_to_idx("KG_data/wn18rr/entities.dict")
-    wn18rr_rel2idx = load_dict_to_idx("KG_data/wn18rr/relations.dict")
-    breakpoint()
-    append_dift_ids_to_drkgc(
-        drkgc_dir='dataset/wn18rr', 
-        dift_dir='DIFT-dataset/WN18RR/SimKGC/data_KGELlama',
-        output_dir='dataset_merged/wn18rr', # 새로운 저장 폴더!
-        dataset_name='wn18rr',
-        ent2idx=wn18rr_ent2idx,
-        rel2idx=wn18rr_rel2idx
-    )
+    
+    wn18rr_id2str = id2str_map("KG_data/wn18rr/entity2text.txt", 'wn18rr')
+    fb15k237_id2str = id2str_map("KG_data/fb15k-237/entity2text.txt", 'fb15k237')
     
     print("\n[ FB15K237 데이터 병합 시작 ]")
     fb15k237_ent2idx = load_dict_to_idx("KG_data/fb15k-237/entities.dict")
@@ -251,9 +265,25 @@ if __name__ == '__main__':
         dift_dir='DIFT-dataset/FB15K237/CoLE/data_KGELlama',
         output_dir='dataset_merged/fb15k237', # 새로운 저장 폴더!
         dataset_name='fb15k237',
+        id2str = fb15k237_id2str,
         ent2idx=fb15k237_ent2idx,
         rel2idx=fb15k237_rel2idx
     )
+
+    wn18rr_ent2idx = load_dict_to_idx("KG_data/wn18rr/entities.dict")
+    wn18rr_rel2idx = load_dict_to_idx("KG_data/wn18rr/relations.dict")
+    print("\n[ WN18RR 데이터 병합 시작 ]")
+    append_dift_ids_to_drkgc(
+        drkgc_dir='dataset/wn18rr', 
+        dift_dir='DIFT-dataset/WN18RR/SimKGC/data_KGELlama',
+        output_dir='dataset_merged/wn18rr', # 새로운 저장 폴더!
+        dataset_name='wn18rr',
+        id2str = wn18rr_id2str,
+        ent2idx=wn18rr_ent2idx,
+        rel2idx=wn18rr_rel2idx
+    )
+    
+    
     #wn18rr_id2str = id2str_map("KG_data/wn18rr/entity2text.txt", 'wn18rr')
     #fb15k237_id2str = id2str_map("KG_data/fb15k-237/entity2text.txt", 'fb15k237')
     #explore_topk('DIFT-dataset/WN18RR/SimKGC/data_KGELlama', wn18rr_id2str)
