@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import math 
 
 class KG_align(nn.Module):
-    def __init__(self,E, R, hidden_dim, rand_neg, beta, uni_weight, pretrained_ent=None, pretrained_rel=None, freeze_embeddings=True, KGE_model_name='TransE', head_num=1, R_dim=1000, attention_dim=1024, gamma=18, num_neg_samples = 256):
+    def __init__(self,E, R, hidden_dim, rand_neg, alpha, beta, pretrained_ent=None, pretrained_rel=None, freeze_embeddings=True, KGE_model_name='TransE', head_num=1, R_dim=1000, attention_dim=1024, gamma=18, num_neg_samples = 256):
         super().__init__()
         ## 0. 공통 정의 E(entity 개수) R(relation 개수) 
         # E_dim(ent embedding의 hidden dim) R_dim(rel embedding의 hidden dim) 
@@ -63,8 +63,8 @@ class KG_align(nn.Module):
         ## 3. hyper-parameter
         self.num_neg_samples = num_neg_samples
         self.random_neg = rand_neg 
+        self.alpha = alpha
         self.beta = beta
-        self.uni_weight = uni_weight
 
     def _calculate_KGE_distance(self, h_fixed, r_fixed, t_fixed, cand_H, cand_T):
         if self.KGE_model.lower() == "rotate":
@@ -102,7 +102,7 @@ class KG_align(nn.Module):
             raise RuntimeError(f"[에러 감지] 지원하지 않는 model_type이 들어왔습니다: '{self.KGE_model}'")
         return d_head, d_tail 
 
-    def KGE_loss(self, triple_ids, entity_ids, is_predicted_tail, rand_entity_ids, subsampling_weight, adv_temperature=1.0):
+    def KGE_loss(self, triple_ids, entity_ids, is_predicted_tail, rand_entity_ids, adv_temperature=1.0):
         ## head
         head_emb = self.entity_embedding[triple_ids[:,0]] #(B,E_dim)
         ## tail
@@ -110,8 +110,7 @@ class KG_align(nn.Module):
         ## cand
         num_real_cands = entity_ids.size(1) # 원래 후보 개수 (20)
         if self.random_neg:
-            combined_ids = rand_entity_ids
-            #combined_ids = torch.cat([entity_ids, rand_entity_ids], dim=1)
+            combined_ids = torch.cat([entity_ids, rand_entity_ids], dim=1)
         else:
             combined_ids = entity_ids
         cand_emb = self.entity_embedding[combined_ids] #(B,276,E_dim) or (B,20,E_dim)
@@ -159,16 +158,13 @@ class KG_align(nn.Module):
         # Softmax 특성상 neg_weights의 합이 1이므로, 이전처럼 오답 개수로 평균 낼 필요 없이 바로 sum()
         neg_loss_all = neg_weights * (-F.logsigmoid(-neg_score))
         neg_loss = neg_loss_all.sum(dim=1) # [batch_size]
-        if self.uni_weight:
-            # 10. 최종 Loss (Positive와 Negative의 평균)
-            loss = (pos_loss.mean() + neg_loss.mean()) / 2.0
-        else:
-            positive_sample_loss = - (subsampling_weight * pos_loss).sum()/subsampling_weight.sum()
-            negative_sample_loss = - (subsampling_weight * neg_loss).sum()/subsampling_weight.sum()
-            loss = (positive_sample_loss + negative_sample_loss)/2
+
+        # 10. 최종 Loss (Positive와 Negative의 평균)
+        loss = (pos_loss.mean() + neg_loss.mean()) / 2.0
+        
         return loss
 
-    def Align_loss(self, last_hidden_state, triple_ids, entity_ids, is_predicted_tail, rand_entity_ids, subsampling_weight, adv_temperature=1.0):
+    def Align_loss(self, last_hidden_state, triple_ids, entity_ids, is_predicted_tail, rand_entity_ids, adv_temperature=1.0):
         batch_size = entity_ids.size(0)
         #q = A h_x
         query = self.W_q(last_hidden_state) # [8, 500]
@@ -178,8 +174,7 @@ class KG_align(nn.Module):
         tail_emb = self.entity_embedding[triple_ids[:,2]] #(B,E_dim)
         ## cand
         if self.random_neg:
-            combined_ids = rand_entity_ids
-            #combined_ids = torch.cat([entity_ids, rand_entity_ids], dim=1)
+            combined_ids = torch.cat([entity_ids, rand_entity_ids], dim=1)
         else:
             combined_ids = entity_ids
         cand_emb = self.entity_embedding[combined_ids] # [8, 276, 500]
@@ -226,13 +221,9 @@ class KG_align(nn.Module):
         neg_loss_all = neg_weights * (-F.logsigmoid(-neg_score))
         neg_loss = neg_loss_all.sum(dim=1) # [batch_size]
 
-        if self.uni_weight:
-            # 10. 최종 Loss (Positive와 Negative의 평균)
-            loss = (pos_loss.mean() + neg_loss.mean()) / 2.0
-        else:
-            positive_sample_loss = - (subsampling_weight * pos_loss).sum()/subsampling_weight.sum()
-            negative_sample_loss = - (subsampling_weight * neg_loss).sum()/subsampling_weight.sum()
-            loss = (positive_sample_loss + negative_sample_loss)/2
+        # 10. 최종 Loss (Positive와 Negative의 평균)
+        loss = (pos_loss.mean() + neg_loss.mean()) / 2.0
+
         return loss
     
     def Structure_loss(self, last_hidden_state, triple_ids, is_predicted_tail):
@@ -251,7 +242,7 @@ class KG_align(nn.Module):
         return loss
 
 
-    def forward(self, last_hidden_state, triple_ids, entity_ids, is_predicted_tail, is_infer, rand_entity_ids=None, subsampling_weight=None):
+    def forward(self, last_hidden_state, triple_ids, entity_ids, is_predicted_tail, is_infer):
         last_hidden_state = last_hidden_state.float()
         if is_infer:# infer 모든 t에 대해 ranking 
             # (1) V_final 구하기 
@@ -267,20 +258,22 @@ class KG_align(nn.Module):
                     tail_emb = self.entity_embedding[triple_ids[:,2]].float()
                     temp = tail_emb - rel_emb
             delta = torch.norm(query - temp, p=1, dim=-1, keepdim=True) # [1]
-            alpha = torch.exp(- self.beta * delta) # beta 2개 고르기 +arg에 추가 
-            V_final = alpha * query + (1-alpha) * temp # [1,500]
-            #V_final = temp ## alpha=0으로 고정 
+            if self.beta > 0:
+                alpha = torch.exp(- self.beta * delta) # beta 2개 고르기 +arg에 추가 
+                V_final = alpha * query + (1-alpha) * temp # [1,500]
+            else:
+                V_final = self.alpha * query + (1-self.alpha)*temp 
             score_tensor = V_final.unsqueeze(1) - all_entities.unsqueeze(0)
             distances = torch.norm(score_tensor, p=1, dim=2)
             scores = -distances
             return scores
         else:
+            #breakpoint()
             batch_size = entity_ids.size(0)
-            if rand_entity_ids is None:
-                rand_entity_ids = torch.randint(0, self.E, (batch_size, self.num_neg_samples), device=entity_ids.device)
-            kge_loss = self.KGE_loss(triple_ids, entity_ids, is_predicted_tail, rand_entity_ids, subsampling_weight)
-            align_loss = self.Align_loss(last_hidden_state, triple_ids, entity_ids, is_predicted_tail, rand_entity_ids, subsampling_weight)
-            struct_loss = self.Struture_loss(last_hidden_state, triple_ids, is_predicted_tail)
+            rand_entity_ids = torch.randint(0, self.E, (batch_size, self.num_neg_samples), device=entity_ids.device)
+            kge_loss = self.KGE_loss(triple_ids, entity_ids, is_predicted_tail, rand_entity_ids)
+            align_loss = self.Align_loss(last_hidden_state, triple_ids, entity_ids, is_predicted_tail, rand_entity_ids)
+            struct_loss = self.Structure_loss(last_hidden_state, triple_ids, is_predicted_tail)
             return {
                 "align_loss": align_loss,
                 "kge_loss": kge_loss,

@@ -39,7 +39,7 @@ class Arguments:
     lm_loss: float = field(default=0.0)
     struct_loss: float = field(default=0.0)
     kge_loss: float = field(default=0.0)
-    uni_weight: bool = field(default=False)
+    alpha: float = field(default=0.0)
     beta: float = field(default=0.01)
     checkpoint_path: str = field(default=None)
     data_path: str = field(default=None, metadata={"help":"kg data path"})

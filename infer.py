@@ -179,10 +179,17 @@ class Evaluator:
                 # if h == 7566 and r == 137 and t == 5182:
                 #     np.save(f"drkgc_tensor_{query_key}.npy", output[0].cpu().numpy())
                 #     print(f"\n🚨 [디버그] {query_key}의 DrKGC 전체 점수 텐서 저장 완료!")
-                top1_id = argsort[0, 0].item()
+                top10_ids = argsort[0, :10].cpu().tolist()
+                top10_preds = [self.id2entity.get(eid, f"[UNKNOWN_ID_{eid}]") for eid in top10_ids]
+                top10_scores = [round(output[0, eid].item(), 4) for eid in top10_ids]
+                
                 ex['target'] = ex.get('output', '')
                 ex['pred_rank'] = ranking
-                ex['pred'] = self.id2entity.get(top1_id, f"[UNKNOWN_ID_{top1_id}]")
+                ex['target_score'] = round(target_score.item(), 4) # 정답의 실제 점수
+                
+                ex['pred'] = top10_preds[0] # 기존 호환성을 위해 Top-1 유지
+                ex['top10_preds'] = top10_preds # 1등부터 10등까지의 엔티티 이름 리스트
+                ex['top10_scores'] = top10_scores
                 if 'input' in ex: ex.pop('input')
                 preds.append(ex)
                 #generated.append(top1_id)
@@ -313,10 +320,10 @@ if __name__ == '__main__':
         #     pretrained_ent = kge_state_dict['model_state_dict']['entity_embedding']
         #     pretrained_rel = kge_state_dict['model_state_dict']['relation_embedding']
             
-        #     align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.beta, 
+        #     align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.alpha, args.beta, 
         #                            pretrained_ent=pretrained_ent, pretrained_rel=pretrained_rel, 
         #                            KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
-        align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.beta, args.uni_weight, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
+        align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.alpha, args.beta, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
         align_state = torch.load(ckpt_dir / "align_model.bin", map_location="cpu")
         align_model.load_state_dict(align_state)
         align_model.cuda()
