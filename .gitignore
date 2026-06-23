@@ -24,3 +24,5 @@ dataset_merged/
 DIFT-dataset/
 *.npy
 *_debug_log.json
+checkpoint*
+*.csv

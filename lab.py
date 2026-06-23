@@ -34,8 +34,8 @@ data_configs = {
         "dataset_path": "dataset_merged/wn18rr",
         "data_path": "KG_data/wn18rr",
         "kge_embedding_path": "dataset/wn18rr/entity_embeddings.pt",
-        "checkpoint_path": "TransE_wn18rr_0/checkpoint",
-        "epochs": 10,
+        "checkpoint_path": None,#"TransE_wn18rr_0/checkpoint",
+        "epochs": 200,
         "batch_size": 8,
         "grad_accum_steps": 1,
         "logging_steps": 50,
@@ -45,10 +45,10 @@ data_configs = {
         "dataset_path": "dataset_merged/fb15k237",
         "data_path": "KG_data/fb15k-237",
         "kge_embedding_path": "dataset/fb15k237/entity_embeddings.pt",
-        "checkpoint_path": "TransE_FB15k-237_0/checkpoint",
-        "epochs": 4,
+        "checkpoint_path": None,#"TransE_FB15k-237_0/checkpoint",
+        "epochs": 200,
         "batch_size": 8,
-        "grad_accum_steps": 2,
+        "grad_accum_steps": 1,
         "logging_steps": 10,
         "workers": 32,
     }
@@ -57,41 +57,44 @@ data_configs = {
 
 def eval_for_data_type(output_folder, data_type):
     config = data_configs[data_type]
-    seeds = [1213, 626, 622] 
-    lm_loss = [0.0, 1.0]
-    struct_loss = [0.0, 0.009] if 'wn18rr' in data_type else [0.0, 0.004]
-    align_loss = 0.02 if 'wn18rr' in data_type else 0.007
+    seeds = [1213] 
+    lm_loss = [1.0]
+    #struct_loss = [0.0, 0.009] if 'wn18rr' in data_type else [0.0, 0.004]
+    struct_loss = [0.0]
+    #align_loss = 0.02 if 'wn18rr' in data_type else 0.007
+    align_loss = [0.01, 0.05, 0.1, 0.5] if 'wn18rr' in data_type else [0.02, 0.1, 0.2, 1.0]
     kge_loss = 0.0
     alpha_beta = []
-    alpha_beta.append({"alpha": 0.0, "beta": 0.0})
+    #alpha_beta.append({"alpha": 0.0, "beta": 0.0})
     alpha_beta.append({"alpha": 1.0, "beta": 0.0})
-    beta = [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
+    beta = [0.01, 0.05]
     for b in beta:
         alpha_beta.append({"alpha": -1.0, "beta": b})
-    experiments = list(itertools.product(seeds, lm_loss, struct_loss, alpha_beta))
+    experiments = list(itertools.product(seeds, lm_loss, struct_loss, align_loss, alpha_beta))
     gpu_queue = queue.Queue()
     available_gpus = [0,1,2,3]
     for gpu in available_gpus:
         gpu_queue.put(gpu)
     def process_experiment(exp_params):
-        seed, lm_loss, struct_loss, alpha_beta = exp_params
+        seed, lm_loss, struct_loss, align_loss, alpha_beta = exp_params
         alpha = alpha_beta["alpha"]
         beta = alpha_beta["beta"]
         if alpha in [0.0, 1.0]:
             suffix = f"a{alpha}"
         else:
             suffix = f"b{beta}"
-        exp_name = f"llama3_seed{seed}_lm{lm_loss}_st{struct_loss}"
-        eval_run_name = f"{data_type[:2]}_val_seed{seed}_lm{lm_loss}_st{struct_loss}_{suffix}"
+        exp_name = f"llama3_seed{seed}_lm{lm_loss}_st{struct_loss}_al{align_loss}"
+        eval_run_name = f"{data_type[:2]}_val_seed{seed}_lm{lm_loss}_st{struct_loss}_al{align_loss}_{suffix}"
         exp_output_dir = os.path.join(output_folder, data_type, exp_name)
         final_checkpoint_path = os.path.join(exp_output_dir, "checkpoint-final")
         if not os.path.exists(final_checkpoint_path):
             return f"⚠️ Skipped (No checkpoint found): {exp_name}"
-        eval_result_file = os.path.join(exp_output_dir, "metrics.txt")
+        eval_result_file = os.path.join(exp_output_dir, f"metrics_{suffix}.txt")
         if os.path.exists(eval_result_file) and not args.overwrite_eval:
             return f"✅ Skipped (Already evaluated): {exp_name}"
         gpu_num = gpu_queue.get()
         try:
+            ckpt_arg = f"--checkpoint_path '{config['checkpoint_path']}' " if config['checkpoint_path'] is not None else ""
             full_command = (
                 f"CUDA_VISIBLE_DEVICES={gpu_num} python infer.py "
                 f"--dataset_path '{config['dataset_path']}' "
@@ -114,9 +117,10 @@ def eval_for_data_type(output_folder, data_type):
                 f"--lm_loss {lm_loss} "
                 f"--struct_loss {struct_loss} "
                 f"--kge_loss {kge_loss} "
+                f"--align_loss {align_loss} "
                 f"--alpha {alpha} "
                 f"--beta {beta} "
-                f"--checkpoint_path '{config['checkpoint_path']}' "
+                f"{ckpt_arg}"
                 f"--data_path '{config['data_path']}' "
             )
             print(f"\n[GPU {gpu_num}] 🔎 Evaluating: Seed={seed}, LM_Loss={lm_loss}, Struct_loss={struct_loss}")
@@ -135,28 +139,30 @@ def eval_for_data_type(output_folder, data_type):
 def run_for_data_type(output_folder, data_type):
     config = data_configs[data_type]
     #seeds = [1213, 626, 622]
-    seeds = [626]
+    seeds = [1213]
     #lm_loss = [0.0, 1.0]
     lm_loss = [0.0]
     #struct_loss = [0.0, 0.009] if 'wn18rr' in data_type else [0.0, 0.004]
     struct_loss = [0.0]
-    align_loss = 0.02 if 'wn18rr' in data_type else 0.007
-    kge_loss = 0.0
-    experiments = list(itertools.product(seeds, lm_loss, struct_loss))
+    align_loss = [0.0]
+    #align_loss = [0.01, 0.05, 0.1, 0.5] if 'wn18rr' in data_type else [0.02, 0.1, 0.2, 1.0]
+    kge_loss = 1.0
+    experiments = list(itertools.product(seeds, lm_loss, struct_loss, align_loss))
     gpu_queue = queue.Queue()
     available_gpus = [0,1,2,3]
     for gpu in available_gpus:
         gpu_queue.put(gpu)
     def process_experiment(exp_params):
-        seed, lm_loss, struct_loss = exp_params
-        exp_name = f"llama3_seed{seed}_lm{lm_loss}_st{struct_loss}"
+        seed, lm_loss, struct_loss, align_loss = exp_params
+        exp_name = f"llama3_seed{seed}_lm{lm_loss}_st{struct_loss}_al{align_loss}"
         exp_output_dir = os.path.join(output_folder, data_type, exp_name)
-        run_name = f"{data_type[:2]}_train_seed{seed}_lm{lm_loss}_st{struct_loss}"
+        run_name = f"{data_type[:2]}_train_seed{seed}_lm{lm_loss}_st{struct_loss}_al{align_loss}"
         final_checkpoint_path = os.path.join(exp_output_dir, "checkpoint-final")
         if os.path.exists(final_checkpoint_path) and not args.overwrite_gen:
             return f"✅ Skipped (already exists): {exp_name}"
         gpu_num = gpu_queue.get()
         try:
+            ckpt_arg = f"--checkpoint_path '{config['checkpoint_path']}' " if config['checkpoint_path'] is not None else ""
             full_command = (
                 f"CUDA_VISIBLE_DEVICES={gpu_num} python main.py "
                 f"--dataset_path '{config['dataset_path']}' "
@@ -173,7 +179,7 @@ def run_for_data_type(output_folder, data_type):
                 f"--report_to wandb "
                 f"--use_margin_loss True --use_wandb True --use_attention False "
                 f"--use_reconstruction_loss False --new_token False "
-                f"--checkpoint_path '{config['checkpoint_path']}' "
+                f"{ckpt_arg}"
                 f"--data_path '{config['data_path']}' "
                 f"--output_dir '{exp_output_dir}' "
                 f"--run_name '{run_name}' "
@@ -181,6 +187,7 @@ def run_for_data_type(output_folder, data_type):
                 f"--lm_loss {lm_loss} "
                 f"--struct_loss {struct_loss} "
                 f"--kge_loss {kge_loss} "
+                f"--align_loss {align_loss} "
             )
             print(f"\n[GPU {gpu_num}] ▶️ Executing: Seed={seed}, LM_Loss={lm_loss}, Struct_loss={struct_loss}")
             subprocess.run(full_command, shell=True)

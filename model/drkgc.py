@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from torch import nn
 from transformers import GenerationConfig, Seq2SeqTrainer, LogitsProcessor, LogitsProcessorList
+from transformers.modeling_outputs import CausalLMOutputWithPast
 from collections import defaultdict
 import json
 
@@ -229,23 +230,37 @@ class DrKGC_enhanced(DrKGC):
         )
 
 class DrKGC_align(DrKGC):
-    def __init__(self, tokenizer, llm_model, graph_model, align_model, lm_loss, kge_loss, struct_loss, kgc_loss_weight):
+    def __init__(self, tokenizer, llm_model, graph_model, align_model, lm_loss, kge_loss, struct_loss, align_loss):
         super().__init__(tokenizer, llm_model, graph_model)
         self.align_model = align_model
         self.lm_loss = lm_loss
         self.kge_loss = kge_loss
         self.struct_loss = struct_loss
-        self.align_loss_weight = kgc_loss_weight
+        self.align_loss = align_loss
 
     def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail, extract_positions, triplet_ids, topk_ids):
         inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
-        outputs = self.llm_model(
-            inputs_embeds=inputs_embeds, 
-            attention_mask=attention_mask, 
-            labels = labels,
-            output_hidden_states=True, 
-            return_dict=True
-        )
+        if self.lm_loss==0.0 and self.align_loss==0.0 and self.struct_loss==0.0:
+            batch_size = input_ids.size(0)
+            seq_length = input_ids.size(1)
+            hidden_size = self.llm_model.config.hidden_size
+            dummy_hidden_state = torch.zeros(
+                (batch_size, seq_length, hidden_size), 
+                device=input_ids.device, 
+                dtype=inputs_embeds.dtype
+            )
+            outputs = CausalLMOutputWithPast(
+                loss=torch.tensor(0.0, device=input_ids.device),
+                hidden_states=(dummy_hidden_state,) # 튜플 형태로 감싸기
+            )
+        else:
+            outputs = self.llm_model(
+                inputs_embeds=inputs_embeds, 
+                attention_mask=attention_mask, 
+                labels = labels,
+                output_hidden_states=True, 
+                return_dict=True
+            )
         last_hidden_states = outputs.hidden_states[-1] # [8,371,4096]
         batch_size = last_hidden_states.size(0) # 8
         batch_indices = torch.arange(batch_size, device=last_hidden_states.device) # tensor([0,1,2,3,4,5,6,7])
@@ -253,7 +268,7 @@ class DrKGC_align(DrKGC):
         #breakpoint()
         align_outputs = self.align_model(last_hidden_state, triplet_ids, topk_ids, is_predicted_tail, False)
         outputs["lm_loss"] = outputs.loss * self.lm_loss
-        outputs["align_loss"] = align_outputs["align_loss"] * self.align_loss_weight
+        outputs["align_loss"] = align_outputs["align_loss"] * self.align_loss
         outputs["kge_loss"] = align_outputs["kge_loss"] * self.kge_loss
         outputs["struct_loss"] = align_outputs["struct_loss"] * self.struct_loss
         outputs["loss"] = outputs["struct_loss"] + outputs["kge_loss"] + outputs["align_loss"] + outputs["lm_loss"]
@@ -269,13 +284,27 @@ class DrKGC_align(DrKGC):
         # 1. 입력 임베딩 준비
         inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
         # 2. LLM을 한 번 통과시켜서 H (last_hidden_states) 추출
-        outputs = self.llm_model(
-            inputs_embeds=inputs_embeds,
-            attention_mask=attention_mask,
-            output_hidden_states=True,
-            return_dict=True,
-            use_cache=False # 순수하게 H만 뽑을 것이므로 캐시 끔
-        ) # output['logits'].shape (1,L,Vocab) # output['hidden_states'][0].shape (1,L,H) -이게 최초 입력+레이어 통과 32개 = 총 33개 
+        if self.lm_loss==0.0 and self.align_loss==0.0 and self.struct_loss==0.0:
+            batch_size = input_ids.size(0)
+            seq_length = input_ids.size(1)
+            hidden_size = self.llm_model.config.hidden_size
+            dummy_hidden_state = torch.zeros(
+                (batch_size, seq_length, hidden_size), 
+                device=input_ids.device, 
+                dtype=inputs_embeds.dtype
+            )
+            outputs = CausalLMOutputWithPast(
+                loss=torch.tensor(0.0, device=input_ids.device),
+                hidden_states=(dummy_hidden_state,) # 튜플 형태로 감싸기
+            )
+        else:
+            outputs = self.llm_model(
+                inputs_embeds=inputs_embeds,
+                attention_mask=attention_mask,
+                output_hidden_states=True,
+                return_dict=True,
+                use_cache=False # 순수하게 H만 뽑을 것이므로 캐시 끔
+            ) # output['logits'].shape (1,L,Vocab) # output['hidden_states'][0].shape (1,L,H) -이게 최초 입력+레이어 통과 32개 = 총 33개 
         last_hidden_states = outputs.hidden_states[-1] # [1,315,4096]
         last_hidden_state = last_hidden_states[:, -1, :] # [1, 4096]
         # 우선 train부터 완료하고 돌아와서 다시

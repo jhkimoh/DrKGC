@@ -38,6 +38,7 @@ class Arguments:
     use_align: bool = field(default=False, metadata={"help":"True for using align model"})
     lm_loss: float = field(default=0.0)
     struct_loss: float = field(default=0.0)
+    align_loss: float = field(default=0.01)
     kge_loss: float = field(default=0.0)
     alpha: float = field(default=0.0)
     beta: float = field(default=0.01)

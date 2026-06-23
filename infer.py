@@ -50,32 +50,41 @@ class Evaluator:
         self.data_module = data_module
 
         self.output_dir = os.path.dirname(args.checkpoint_dir)
-        self.log_file_path = os.path.join(self.output_dir, 'metrics.txt')
-
-        file_path = os.path.join(args.dataset_path,'id2entity.json')
-        with open(file_path, 'r', encoding='utf-8') as f:
-            self.id2entity = {int(k): v for k, v in json.load(f).items()}
-        # all_true_triple 만들기... 
-        with open(os.path.join(args.data_path, 'entities.dict')) as fin:
-            entity2id = dict()
-            for line in fin:
-                eid, entity = line.strip().split('\t')
-                entity2id[entity] = int(eid)
-
-        with open(os.path.join(args.data_path, 'relations.dict')) as fin:
-            relation2id = dict()
-            for line in fin:
-                rid, relation = line.strip().split('\t')
-                relation2id[relation] = int(rid)
-        self.train_triples = self.read_triple(os.path.join(args.data_path, 'train.txt'), entity2id, relation2id)
-        self.valid_triples = self.read_triple(os.path.join(args.data_path, 'valid.txt'), entity2id, relation2id)
-        self.test_triples = self.read_triple(os.path.join(args.data_path, 'test.txt'), entity2id, relation2id)
-        self.all_true_triples = self.train_triples + self.valid_triples + self.test_triples
-        self.hr2t = collections.defaultdict(set)
-        self.tr2h = collections.defaultdict(set)
-        for h, r, t in self.all_true_triples:
-            self.hr2t[(h, r)].add(t)
-            self.tr2h[(t, r)].add(h)
+        if args.use_align:
+            alpha_val = getattr(args, 'alpha', -1.0)
+            beta_val = getattr(args, 'beta', 0.0)
+            if alpha_val in [0.0, 1.0]:
+                file_suffix = f"_a{alpha_val}"
+            else:
+                file_suffix = f"_b{beta_val}"
+            self.log_file_path = os.path.join(self.output_dir, f'metrics{file_suffix}.txt')
+            file_path = os.path.join(args.dataset_path,'id2entity.json')
+            with open(file_path, 'r', encoding='utf-8') as f:
+                self.id2entity = {int(k): v for k, v in json.load(f).items()}
+            # all_true_triple 만들기... 
+            with open(os.path.join(args.data_path, 'entities.dict')) as fin:
+                entity2id = dict()
+                self.kge_id2entity = dict()
+                for line in fin:
+                    eid, entity = line.strip().split('\t')
+                    entity2id[entity] = int(eid)
+                    self.kge_id2entity[int(eid)] = entity
+            with open(os.path.join(args.data_path, 'relations.dict')) as fin:
+                relation2id = dict()
+                for line in fin:
+                    rid, relation = line.strip().split('\t')
+                    relation2id[relation] = int(rid)
+            self.train_triples = self.read_triple(os.path.join(args.data_path, 'train.txt'), entity2id, relation2id)
+            self.valid_triples = self.read_triple(os.path.join(args.data_path, 'valid.txt'), entity2id, relation2id)
+            self.test_triples = self.read_triple(os.path.join(args.data_path, 'test.txt'), entity2id, relation2id)
+            self.all_true_triples = self.train_triples + self.valid_triples + self.test_triples
+            self.hr2t = collections.defaultdict(set)
+            self.tr2h = collections.defaultdict(set)
+            for h, r, t in self.all_true_triples:
+                self.hr2t[(h, r)].add(t)
+                self.tr2h[(t, r)].add(h)
+        else:
+            self.log_file_path = os.path.join(self.output_dir, 'metrics.txt')
 
     @staticmethod
     def read_triple(file_path, entity2id, relation2id):
@@ -180,7 +189,7 @@ class Evaluator:
                 #     np.save(f"drkgc_tensor_{query_key}.npy", output[0].cpu().numpy())
                 #     print(f"\n🚨 [디버그] {query_key}의 DrKGC 전체 점수 텐서 저장 완료!")
                 top10_ids = argsort[0, :10].cpu().tolist()
-                top10_preds = [self.id2entity.get(eid, f"[UNKNOWN_ID_{eid}]") for eid in top10_ids]
+                top10_preds = [self.kge_id2entity.get(eid, f"[UNKNOWN_ID_{eid}]") for eid in top10_ids]
                 top10_scores = [round(output[0, eid].item(), 4) for eid in top10_ids]
                 
                 ex['target'] = ex.get('output', '')
@@ -255,23 +264,20 @@ class Evaluator:
 if __name__ == '__main__':
     #set_seed(3407)
     
-    hfparser = HfArgumentParser((Arguments, GenerationArguments))
-    (data_args, generation_args, _) = hfparser.parse_args_into_dataclasses(return_remaining_strings=True)
+    hfparser = HfArgumentParser((Arguments, FinetuningArguments, GenerationArguments))
+    (data_args, finetune_args, generation_args, _) = hfparser.parse_args_into_dataclasses(return_remaining_strings=True)
     generation_config = GenerationConfig(**vars(generation_args))
-    args = argparse.Namespace(**vars(data_args))
+    combined_args = {**vars(data_args), **vars(finetune_args)}
+    args = argparse.Namespace(**combined_args)
     set_seed(args.seed_num)
     if args.use_wandb:
         wandb_api_key = os.environ.get("WANDB_API_KEY")
-        if wandb_api_key:
-            wandb.login(key=wandb_api_key)
-            wandb.init(
-                project="DrKGC-Experiments", 
-                name=args.checkpoint_dir, # 예: Eval-checkpoint-final
-                config=vars(args) # 하이퍼파라미터도 같이 저장
-            )
-        else:
-            print("⚠️ WANDB_API_KEY가 없습니다. WandB 로깅이 비활성화될 수 있습니다.")
-
+        wandb.login(key=wandb_api_key)
+        wandb.init(
+            project="DrKGC-Experiments-Align", 
+            name=args.run_name, # 예: Eval-checkpoint-final
+            config=vars(args) # 하이퍼파라미터도 같이 저장
+        )
     print(f"Load LLM: {args.model_name_or_path}")
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=False)
     tokenizer.pad_token = tokenizer.eos_token
@@ -327,7 +333,7 @@ if __name__ == '__main__':
         align_state = torch.load(ckpt_dir / "align_model.bin", map_location="cpu")
         align_model.load_state_dict(align_state)
         align_model.cuda()
-        model = DrKGC_align(tokenizer, model, embed_model, align_model, args.lm_loss, args.kge_loss, args.struct_loss, kgc_loss_weight)
+        model = DrKGC_align(tokenizer, model, embed_model, align_model, args.lm_loss, args.kge_loss, args.struct_loss, args.align_loss)
     else:
         model = DrKGC(tokenizer, model, embed_model)
     if hasattr(model, 'llm_model'):
@@ -349,7 +355,17 @@ if __name__ == '__main__':
         'generation_config': vars(generation_config),
         'prediction': preds,
     }
-    output_path = os.path.join(os.path.dirname(args.checkpoint_dir), f'prediction.json')
-    json.dump(output, open(output_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    if args.use_align:
+        alpha_val = getattr(args, 'alpha', -1.0)
+        beta_val = getattr(args, 'beta', 0.0)
+        if alpha_val in [0.0, 1.0]:
+            file_suffix = f"_a{alpha_val}"
+        else:
+            file_suffix = f"_b{beta_val}"
+        output_path = os.path.join(os.path.dirname(args.checkpoint_dir), f'prediction{file_suffix}.json')
+        json.dump(output, open(output_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
+    else:
+        output_path = os.path.join(os.path.dirname(args.checkpoint_dir), f'prediction.json')
+        json.dump(output, open(output_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
     if args.use_wandb:
         wandb.finish()

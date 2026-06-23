@@ -113,6 +113,9 @@ class SavePeftModelCallback(transformers.TrainerCallback):
         "adapter_model.bin",
         "adapter_config.json",
         "graph_model.bin",
+        "align_model.bin",       # 🌟 삭제 방지 목록에 명시!
+        "extract_model.bin",     # 🌟 (선택) 다른 확장 모듈들도 추가
+        "enhanced_model.bin",
         "README.md",
     }
 
@@ -124,9 +127,21 @@ class SavePeftModelCallback(transformers.TrainerCallback):
             checkpoint_folder = os.path.join(args.output_dir, f"checkpoint-{state.global_step}")
             print(f"Saving checkpoint at step {state.global_step} to: {checkpoint_folder}")
 
+        os.makedirs(checkpoint_folder, exist_ok=True)
         peft_model_path = checkpoint_folder
-        kwargs["model"].save_pretrained(peft_model_path)
-
+        model = kwargs["model"]
+        model.save_pretrained(peft_model_path)
+        
+        # 🌟 [핵심] 커스텀 모듈들 명시적 수동 저장
+        if hasattr(model, 'embed_model') and model.embed_model is not None:
+            torch.save(model.embed_model.state_dict(), os.path.join(checkpoint_folder, "graph_model.bin"))
+        if hasattr(model, 'align_model') and model.align_model is not None:
+            torch.save(model.align_model.state_dict(), os.path.join(checkpoint_folder, "align_model.bin"))
+        if hasattr(model, 'extract_model') and model.extract_model is not None:
+            torch.save(model.extract_model.state_dict(), os.path.join(checkpoint_folder, "extract_model.bin"))
+        if hasattr(model, 'enhanced_model') and model.enhanced_model is not None:
+            torch.save(model.enhanced_model.state_dict(), os.path.join(checkpoint_folder, "enhanced_model.bin"))
+            
         # Comment out this code if need training status
         for file_name in os.listdir(checkpoint_folder):
             if file_name not in self.KEEP_FILES:
@@ -221,7 +236,7 @@ def train():
             align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.alpha, args.beta, pretrained_ent=pretrained_ent, pretrained_rel=pretrained_rel, freeze_embeddings=(args.kge_loss == 0.0), KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
         else:
             align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.alpha, args.beta, freeze_embeddings=(args.kge_loss == 0.0), KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
-        model = DrKGC_align(tokenizer, model, embed_model, align_model, args.lm_loss, args.kge_loss, args.struct_loss, kgc_loss_weight)
+        model = DrKGC_align(tokenizer, model, embed_model, align_model, args.lm_loss, args.kge_loss, args.struct_loss, args.align_loss)
         data_module = make_data_module_extract(args, tokenizer)
         trainer = CustomTrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
     else:
