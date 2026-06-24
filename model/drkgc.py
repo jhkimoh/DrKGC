@@ -156,6 +156,7 @@ class DrKGC_enhanced(DrKGC):
         self.kgc_loss_weight = kgc_loss_weight
 
     def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail, extract_positions):
+        #breakpoint()
         inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
         outputs = self.llm_model(
             inputs_embeds=inputs_embeds, 
@@ -239,6 +240,7 @@ class DrKGC_align(DrKGC):
         self.align_loss = align_loss
 
     def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail, extract_positions, triplet_ids, topk_ids):
+        #breakpoint()
         inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
         if self.lm_loss==0.0 and self.align_loss==0.0 and self.struct_loss==0.0:
             batch_size = input_ids.size(0)

@@ -200,7 +200,11 @@ class QueryCollator_extract(QueryCollator):
         labels = pad_sequence(labels, batch_first=True, padding_value=-100)
         query_ids = torch.tensor([ex['query_entity_id'] for ex in instances], dtype=torch.long)
         entity_ids = torch.tensor([ex['rank_entities_id'] for ex in instances], dtype=torch.long) # candidate(20개로 고정됨 )
-        subgraph = [ex['subgraph'] for ex in instances]
+        if 'subgraph' in instances[0]:
+            subgraph = [ex['subgraph'] for ex in instances]
+        else:
+            subgraph = None
+        #subgraph = None
         triple_ids = torch.tensor([ex['triple_id'] for ex in instances], dtype=torch.long)
         is_predicted_tail = torch.tensor(is_predicted_tail, dtype=torch.bool)
         extract_positions = torch.tensor(extract_positions, dtype=torch.long)

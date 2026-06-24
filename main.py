@@ -192,7 +192,12 @@ def train():
     else:
         raise ValueError(f"Unsupported model_type: {args.model_type}. Supported values are 'llama' and 'mistral'.")
     model.config.use_cache = False
-    kge_embedding = torch.load(args.kge_embedding_path)
+    loaded_data = torch.load(args.kge_embedding_path)
+    if isinstance(loaded_data, dict) and 'model_state_dict' in loaded_data:
+        kge_embedding = loaded_data['model_state_dict']['entity_embedding']
+        print(f"✅ Checkpoint에서 임베딩 추출 완료! Shape: {kge_embedding.shape}")
+    else:
+        kge_embedding = loaded_data
     kge_embedding_dim = kge_embedding.shape[1]
     llm_config = model.config
     embed_model = GraphEnhancer(kge_embedding, kge_embedding_dim, 4, 128, 1, 1024, llm_config.hidden_size, llm_config.hidden_act)
