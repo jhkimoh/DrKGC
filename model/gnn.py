@@ -56,7 +56,7 @@ class GraphEnhancer(nn.Module):
         device = query_ids.device
         batch_size = query_ids.size(0)
         K = entity_ids.size(1)
-
+        subgraph = None
         if (subgraph is None):
             # [original, original]
             flat_qe = torch.cat([query_ids.view(-1,1), entity_ids], dim=1)  

@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import math 
 
 class KG_align(nn.Module):
-    def __init__(self,E, R, hidden_dim, rand_neg, alpha, beta, pretrained_ent=None, pretrained_rel=None, freeze_embeddings=True, KGE_model_name='TransE', head_num=1, R_dim=1000, attention_dim=1024, gamma=18, num_neg_samples = 256):
+    def __init__(self,E, R, hidden_dim, rand_neg, alpha, beta, use_d_r, pretrained_ent=None, pretrained_rel=None, freeze_embeddings=True, KGE_model_name='TransE', head_num=1, R_dim=1000, attention_dim=1024, gamma=18, num_neg_samples = 256):
         super().__init__()
         ## 0. 공통 정의 E(entity 개수) R(relation 개수) 
         # E_dim(ent embedding의 hidden dim) R_dim(rel embedding의 hidden dim) 
@@ -54,6 +54,14 @@ class KG_align(nn.Module):
             )
         ## 1. KGC loss 를 위한 W_q, W_k, W_v 정의
         self.W_q = nn.Linear(self.H, self.E_dim, bias=False)
+        ## 방법2: 공유 matrix 하나, relation-specific vector 하나 (q = (Ah_x) \circ d_r)
+        if use_d_r:
+            self.d_r = nn.Parameter(torch.zeros(self.R, self.E_dim))
+            nn.init.uniform_(
+                tensor=self.d_r,
+                a=-self.embedding_range.item(),
+                b=self.embedding_range.item()
+            )
         if self.dim_different:
             self.W_q_r = nn.Linear(self.R_dim, self.A, bias=False)
             self.W_o_r = nn.Linear(self.E_dim, self.R_dim, bias=False)
@@ -65,6 +73,7 @@ class KG_align(nn.Module):
         self.random_neg = rand_neg 
         self.alpha = alpha
         self.beta = beta
+        self.use_d_r = use_d_r
 
     def _calculate_KGE_distance(self, h_fixed, r_fixed, t_fixed, cand_H, cand_T):
         if self.KGE_model.lower() == "rotate":
@@ -167,7 +176,12 @@ class KG_align(nn.Module):
     def Align_loss(self, last_hidden_state, triple_ids, entity_ids, is_predicted_tail, rand_entity_ids, adv_temperature=1.0):
         batch_size = entity_ids.size(0)
         #q = A h_x
-        query = self.W_q(last_hidden_state) # [8, 500]
+        Ah_x = self.W_q(last_hidden_state) # [8, 500]
+        if self.use_d_r:
+            d_r = self.d_r[triple_ids[:,1]]
+            query = Ah_x *d_r
+        else:
+            query = Ah_x
         ## head
         head_emb = self.entity_embedding[triple_ids[:,0]] #(B,E_dim)
         ## tail
@@ -227,7 +241,12 @@ class KG_align(nn.Module):
         return loss
     
     def Structure_loss(self, last_hidden_state, triple_ids, is_predicted_tail):
-        query = self.W_q(last_hidden_state) # [8, 500]
+        Ah_x = self.W_q(last_hidden_state) # [8, 500]
+        if self.use_d_r:
+            d_r = self.d_r[triple_ids[:,1]]
+            query = Ah_x *d_r
+        else:
+            query = Ah_x
         head_emb = self.entity_embedding[triple_ids[:,0]] #(B,E_dim)
         rel_emb = self.relation_embedding[triple_ids[:,1]] 
         tail_emb = self.entity_embedding[triple_ids[:,2]] #(B,E_dim)
@@ -246,7 +265,13 @@ class KG_align(nn.Module):
         last_hidden_state = last_hidden_state.float()
         if is_infer:# infer 모든 t에 대해 ranking 
             # (1) V_final 구하기 
-            query = self.W_q(last_hidden_state).float() # [1,4096]
+            Ah_x = self.W_q(last_hidden_state).float() # [8, 500]
+            if self.use_d_r:
+                d_r = self.d_r[triple_ids[:,1]].float()
+                query = Ah_x *d_r
+            else:
+                query = Ah_x
+            #query = self.W_q(last_hidden_state).float() # [1,4096]
             all_entities = self.entity_embedding.float()
             rel_emb = self.relation_embedding[triple_ids[:,1]].float() # [1,500]
             is_tail = is_predicted_tail.item() if isinstance(is_predicted_tail, torch.Tensor) else is_predicted_tail

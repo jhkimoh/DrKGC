@@ -42,8 +42,11 @@ class Arguments:
     kge_loss: float = field(default=0.0)
     alpha: float = field(default=0.0)
     beta: float = field(default=0.01)
-    checkpoint_path: str = field(default=None)
-    data_path: str = field(default=None, metadata={"help":"kg data path"})
+    checkpoint_path: str = field(default=None) ## "TransE_FB15k-237_0/checkpoint"
+    data_path: str = field(default=None, metadata={"help":"kg data path"}) ##  "KG_data/fb15k-237"
+    llm_freeze: bool = field(default=False)
+    peft_model_path: str = field(default=None) ## llm freeze 할때 사용하는 미리 validation dataset으로 peft 한 llm path 
+    use_d_r: bool = field(default=False)
 
 @dataclass
 class FinetuningArguments(Seq2SeqTrainingArguments):

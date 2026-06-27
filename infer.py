@@ -290,11 +290,18 @@ if __name__ == '__main__':
     model = LlamaForCausalLM.from_pretrained(args.model_name_or_path, low_cpu_mem_usage=True, device_map='auto')
     if hasattr(args, 'use_extract') and args.use_extract and args.new_token:
         model.resize_token_embeddings(len(tokenizer))
-    model = PeftModel.from_pretrained(model, args.checkpoint_dir)
+    if args.llm_freeze:
+        model = PeftModel.from_pretrained(model, args.peft_model_path)
+    else:
+        model = PeftModel.from_pretrained(model, args.checkpoint_dir)
 
     model = model.half()
     
-    kge_embedding = torch.load(args.kge_embedding_path)
+    loaded_data = torch.load(args.kge_embedding_path, map_location='cpu')
+    if isinstance(loaded_data, dict) and 'model_state_dict' in loaded_data:
+        kge_embedding = loaded_data['model_state_dict']['entity_embedding']
+    else:
+        kge_embedding = loaded_data
     kge_embedding_dim = kge_embedding.shape[1]
     llm_config = model.config
     embed_model = GraphEnhancer(kge_embedding, kge_embedding_dim, 4, 128, 1, 1024, llm_config.hidden_size, llm_config.hidden_act)
@@ -326,10 +333,10 @@ if __name__ == '__main__':
         #     pretrained_ent = kge_state_dict['model_state_dict']['entity_embedding']
         #     pretrained_rel = kge_state_dict['model_state_dict']['relation_embedding']
             
-        #     align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.alpha, args.beta, 
+        #     align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.alpha, args.beta, args.use_d_r, 
         #                            pretrained_ent=pretrained_ent, pretrained_rel=pretrained_rel, 
         #                            KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
-        align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.alpha, args.beta, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
+        align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.alpha, args.beta, args.use_d_r, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
         align_state = torch.load(ckpt_dir / "align_model.bin", map_location="cpu")
         align_model.load_state_dict(align_state)
         align_model.cuda()

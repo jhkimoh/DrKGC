@@ -1,6 +1,7 @@
 import os
 import argparse
 import bitsandbytes as bnb
+import model
 import torch
 
 import transformers
@@ -12,8 +13,7 @@ from transformers import set_seed, Seq2SeqTrainer, BitsAndBytesConfig
 
 
 from peft.tuners.lora import LoraLayer
-from peft import LoraConfig, get_peft_model, PeftModelForCausalLM, prepare_model_for_kbit_training
-
+from peft import LoraConfig, get_peft_model, PeftModelForCausalLM, prepare_model_for_kbit_training, PeftModel 
 from arguments import Arguments, FinetuningArguments, GenerationArguments
 from data import make_data_module, make_data_module_extract
 from model import GraphEnhancer, DrKGC, DrKGC_extract, KG_extract, CustomTrainer, KG_enhanced, DrKGC_enhanced, DrKGC_align, KG_align
@@ -61,6 +61,18 @@ def get_accelerate_model(args, config, pretrained_model_class):
             low_cpu_mem_usage=True, 
             device_map=device_map, 
         )
+    #breakpoint()
+    if getattr(args, 'peft_model_path', None) is not None:
+        print(f"🔥 [INFO] 파인튜닝된 PEFT 가중치를 불러옵니다: {args.peft_model_path}")
+        model = PeftModel.from_pretrained(model, args.peft_model_path)
+        
+    if getattr(args, 'llm_freeze', True):
+        print("❄️ [INFO] args.llm_freeze == True: LLM 가중치를 동결하고 LoRA 적용을 건너뜁니다.")
+        for param in model.parameters():
+            param.requires_grad = False
+        if hasattr(model, "enable_input_require_grads"):
+            model.enable_input_require_grads()
+        return model 
 
     model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=args.use_quant)
     
@@ -113,11 +125,14 @@ class SavePeftModelCallback(transformers.TrainerCallback):
         "adapter_model.bin",
         "adapter_config.json",
         "graph_model.bin",
-        "align_model.bin",       # 🌟 삭제 방지 목록에 명시!
-        "extract_model.bin",     # 🌟 (선택) 다른 확장 모듈들도 추가
+        "align_model.bin",       
+        "extract_model.bin",
         "enhanced_model.bin",
         "README.md",
     }
+
+    def __init__(self, full_args):
+        self.full_args = full_args
 
     def on_save(self, args, state, control, **kwargs):
         if state.best_model_checkpoint is not None:
@@ -130,7 +145,11 @@ class SavePeftModelCallback(transformers.TrainerCallback):
         os.makedirs(checkpoint_folder, exist_ok=True)
         peft_model_path = checkpoint_folder
         model = kwargs["model"]
-        model.save_pretrained(peft_model_path)
+        if not self.full_args.llm_freeze:
+            if hasattr(model, 'save_pretrained'):
+                model.save_pretrained(peft_model_path)
+        else:
+            print("❄️ LLM is frozen. Skipping base LLM weight saving to save storage space.")
         
         # 🌟 [핵심] 커스텀 모듈들 명시적 수동 저장
         if hasattr(model, 'embed_model') and model.embed_model is not None:
@@ -152,7 +171,9 @@ class SavePeftModelCallback(transformers.TrainerCallback):
         print(f"Saving the final checkpoint to: {checkpoint_folder}")
 
         peft_model_path = checkpoint_folder
-        kwargs["model"].save_pretrained(peft_model_path)
+        if not self.full_args.llm_freeze:
+            if hasattr(kwargs["model"], 'save_pretrained'):
+                kwargs["model"].save_pretrained(peft_model_path)
 
 
 
@@ -195,7 +216,7 @@ def train():
     loaded_data = torch.load(args.kge_embedding_path)
     if isinstance(loaded_data, dict) and 'model_state_dict' in loaded_data:
         kge_embedding = loaded_data['model_state_dict']['entity_embedding']
-        print(f"✅ Checkpoint에서 임베딩 추출 완료! Shape: {kge_embedding.shape}")
+        print(f"✅ Checkpoint에서 임베딩 추출 완료! Shape: {kge_embedding.shape}") ## 초록색 프롬프트 파트에 쓰이는거... 
     else:
         kge_embedding = loaded_data
     kge_embedding_dim = kge_embedding.shape[1]
@@ -238,9 +259,10 @@ def train():
             kge_state_dict = torch.load(args.checkpoint_path, map_location="cpu")
             pretrained_ent = kge_state_dict['model_state_dict']['entity_embedding']
             pretrained_rel = kge_state_dict['model_state_dict']['relation_embedding']
-            align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.alpha, args.beta, pretrained_ent=pretrained_ent, pretrained_rel=pretrained_rel, freeze_embeddings=(args.kge_loss == 0.0), KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
+            print(f"✅ Loaded KGE Embeddings used in KG_align - Entity shape: {pretrained_ent.shape}, Relation shape: {pretrained_rel.shape}")
+            align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.alpha, args.beta, args.use_d_r, pretrained_ent=pretrained_ent, pretrained_rel=pretrained_rel, freeze_embeddings=(args.kge_loss == 0.0), KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
         else:
-            align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.alpha, args.beta, freeze_embeddings=(args.kge_loss == 0.0), KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
+            align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.alpha, args.beta, args.use_d_r, freeze_embeddings=(args.kge_loss == 0.0), KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
         model = DrKGC_align(tokenizer, model, embed_model, align_model, args.lm_loss, args.kge_loss, args.struct_loss, args.align_loss)
         data_module = make_data_module_extract(args, tokenizer)
         trainer = CustomTrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
@@ -254,7 +276,7 @@ def train():
             **data_module,
         )
 
-    trainer.add_callback(SavePeftModelCallback)
+    trainer.add_callback(SavePeftModelCallback(args))
     
     # Training
     train_result = trainer.train()
