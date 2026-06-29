@@ -202,7 +202,7 @@ if __name__ == "__main__":
         seeds = 1213
         struct_loss = 0.0
         target_configs = [
-            (0.0, 1.0, 1.0, True, 'TransE'), (0.0, 1.0, 1.0, True, 'RotatE'), # 세팅 1: LLM & Align 학습
+            (0.0, 1.0, 0.01, True, 'TransE'), (0.0, 1.0, 0.01, True, 'RotatE'), # 세팅 1: LLM & Align 학습
             #(0.0, 1.0, 0.0, False), #(0.0, 0.0,  1.0)  # 세팅 2: KGE만 학습
         ]
         for lm_loss, align_loss, kge_loss, use_d_r, kge_model_name in target_configs:
@@ -218,7 +218,7 @@ if __name__ == "__main__":
             seeds = 1213
             struct_loss = 0.0
             target_configs = [
-                (0.0, 1.0, 1.0, True, 'TransE'), (0.0, 1.0, 1.0, True, 'RotatE'), # 세팅 1: LLM & Align 학습
+                (0.0, 1.0, 0.01, True, 'TransE'), (0.0, 1.0, 0.01, True, 'RotatE'), # 세팅 1: LLM & Align 학습
                 #(0.0, 1.0, 0.0, False), #(0.0, 0.0,  1.0)  # 세팅 2: KGE만 학습
             ]
             alpha_beta_list = [{"alpha": 0.0, "beta": 0.0}, {"alpha": 1.0, "beta": 0.0}]

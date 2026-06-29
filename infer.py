@@ -106,7 +106,7 @@ class Evaluator:
         logs = []
         ranks = np.array([])
         #breakpoint()
-        #debug_log_dict={}
+        debug_log_dict={}
         generated = []
         for ex_idx, ex in enumerate(tqdm(dataset)):
             prompt = ex['input']
@@ -150,8 +150,8 @@ class Evaluator:
                 #breakpoint()
                 h,r,t = ex['triplet_id']
                 pred_type = ex.get('type')
-                #mode_str = "tail-batch" if pred_type == 'predicted_tail' else "head-batch"
-                #query_key = f"{h}_{r}_{t}_{mode_str}"
+                mode_str = "tail-batch" if pred_type == 'predicted_tail' else "head-batch"
+                query_key = f"{h}_{r}_{t}_{mode_str}"
                 target_id = t if pred_type == 'predicted_tail' else h
                 target_score = output[0, target_id].clone()
                 if pred_type == 'predicted_tail':
@@ -175,19 +175,19 @@ class Evaluator:
                         'HITS@3': 1.0 if ranking <= 3 else 0.0,
                         'HITS@10': 1.0 if ranking <= 10 else 0.0,
                     })
-                #target_score_val = output[0, target_id].item()
+                target_score_val = output[0, target_id].item()
                 # # A. 모든 쿼리 성적표를 JSON 딕셔너리에 저장
-                # debug_log_dict[query_key] = {
-                #     "rank": ranking,
-                #     "target_score": target_score_val,
-                #     "top10_preds": argsort[0, :10].cpu().tolist()
-                # }
+                debug_log_dict[query_key] = {
+                    "rank": ranking,
+                    "target_score": target_score_val,
+                    "top10_preds": argsort[0, :10].cpu().tolist()
+                }
                 
                 # # B. 특정 쿼리의 전체 점수 텐서 추출 (.npy)
                 # # 추출하신 RotatE 텐서와 동일한 쿼리를 지정합니다.
-                # if h == 7566 and r == 137 and t == 5182:
-                #     np.save(f"drkgc_tensor_{query_key}.npy", output[0].cpu().numpy())
-                #     print(f"\n🚨 [디버그] {query_key}의 DrKGC 전체 점수 텐서 저장 완료!")
+                if h == 1678 and r == 7 and t == 9202:
+                    np.save(f"drkgc_tensor_{query_key}.npy", output[0].cpu().numpy())
+                    print(f"\n🚨 [디버그] {query_key}의 DrKGC 전체 점수 텐서 저장 완료!")
                 top10_ids = argsort[0, :10].cpu().tolist()
                 top10_preds = [self.kge_id2entity.get(eid, f"[UNKNOWN_ID_{eid}]") for eid in top10_ids]
                 top10_scores = [round(output[0, eid].item(), 4) for eid in top10_ids]
@@ -247,11 +247,11 @@ class Evaluator:
         print("ranking metrics:")
         print(metrics)
 
-        # if self.args.use_align:
-        #     import json
-        #     with open('drkgc_debug_log.json', 'w', encoding='utf-8') as f:
-        #         json.dump(debug_log_dict, f, indent=4)
-        #     print("\n✅ 모든 쿼리의 순위/Top10 결과를 'drkgc_debug_log.json'에 저장했습니다.")
+        if self.args.use_align:
+            import json
+            with open('drkgc_debug_log.json', 'w', encoding='utf-8') as f:
+                json.dump(debug_log_dict, f, indent=4)
+            print("\n✅ 모든 쿼리의 순위/Top10 결과를 'drkgc_debug_log.json'에 저장했습니다.")
 
         with open(self.log_file_path, 'w', encoding='utf-8') as log_file:
             log_line = f'ranking metrics: {metrics}\n'

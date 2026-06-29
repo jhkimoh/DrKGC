@@ -27,7 +27,7 @@ class KG_align(nn.Module):
         self.epsilon = 2.0
         self.gamma = nn.Parameter(torch.Tensor([gamma]), requires_grad=False)
         self.embedding_range = nn.Parameter(
-            torch.Tensor([(self.gamma.item() + self.epsilon) / self.H]), 
+            torch.Tensor([(self.gamma.item() + self.epsilon) / self.R_dim]), 
             requires_grad=False
         )
         #breakpoint()
@@ -321,6 +321,7 @@ class KG_align(nn.Module):
 
     def forward(self, last_hidden_state, triple_ids, entity_ids, is_predicted_tail, is_infer):
         last_hidden_state = last_hidden_state.float()
+        #breakpoint()
         if is_infer:# infer 모든 t에 대해 ranking 
             # (1) V_final 구하기 
             Ah_x = self.W_q(last_hidden_state).float() # [8, 500]
@@ -354,23 +355,23 @@ class KG_align(nn.Module):
                 scores = -distances
                 
                 return scores
-            #     if is_tail: # head, relation embedding 구하기 -> \delta
-            #         head_emb = self.entity_embedding[triple_ids[:,0]].float()
-            #         temp = head_emb + rel_emb
-            #     else: # relation, tail embedding 구하기 -> \delta
-            #         tail_emb = self.entity_embedding[triple_ids[:,2]].float()
-            #         temp = tail_emb - rel_emb
-            # delta = torch.norm(query - temp, p=1, dim=-1, keepdim=True) # [1]
-            # if self.beta > 0:
-            #     alpha = torch.exp(- self.beta * delta) # beta 2개 고르기 +arg에 추가 
-            #     V_final = alpha * query + (1-alpha) * temp # [1,500]
-            # else:
-            #     V_final = self.alpha * query + (1-self.alpha)*temp 
-            # score_tensor = V_final.unsqueeze(1) - all_entities.unsqueeze(0)
-            # distances = torch.norm(score_tensor, p=1, dim=2)
-            # scores2 = -distances
+                if is_tail: # head, relation embedding 구하기 -> \delta
+                    head_emb = self.entity_embedding[triple_ids[:,0]].float()
+                    temp = head_emb + rel_emb
+                else: # relation, tail embedding 구하기 -> \delta
+                    tail_emb = self.entity_embedding[triple_ids[:,2]].float()
+                    temp = tail_emb - rel_emb
+            delta = torch.norm(query - temp, p=1, dim=-1, keepdim=True) # [1]
+            if self.beta > 0:
+                alpha = torch.exp(- self.beta * delta) # beta 2개 고르기 +arg에 추가 
+                V_final = alpha * query + (1-alpha) * temp # [1,500]
+            else:
+                V_final = self.alpha * query + (1-self.alpha)*temp 
+            score_tensor = V_final.unsqueeze(1) - all_entities.unsqueeze(0)
+            distances = torch.norm(score_tensor, p=1, dim=2)
+            scores = -distances
             #breakpoint() # torch.allclose(socre, score2, atol=1e-6) # True 나옴 확인 
-            #return scores
+            return scores
         else:
             #breakpoint()
             batch_size = entity_ids.size(0)
