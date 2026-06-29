@@ -43,7 +43,7 @@ data_configs = {
         "grad_accum_steps": 1,
         "logging_steps": 100,
         "workers": 16,
-        "learning_rate": 2e-4,
+        "learning_rate": 1e-4,
         "llm_freeze": "True",
         "peft_model_path": "results/wn18rr/llama3_seed1213_origin/checkpoint-final"
     },
@@ -57,7 +57,7 @@ data_configs = {
         "grad_accum_steps": 4,
         "logging_steps": 200,
         "workers": 16,
-        "learning_rate": 2e-4,
+        "learning_rate": 1e-4,
         "llm_freeze": "True",
         "peft_model_path": "results/fb15k237/llama3_seed1213_origin/checkpoint-final"
     }
@@ -67,6 +67,19 @@ available_gpus = args.gpus
 gpu_queue = queue.Queue()
 for gpu in available_gpus:
     gpu_queue.put(gpu)
+
+def get_ckpt_path(data_type, kge_model_name):
+    if kge_model_name.lower() == 'transe':
+        if data_type == 'wn18rr':
+            ckpt_path = "TransE_wn18rr_0/checkpoint"
+        elif data_type == 'fb15k237':
+            ckpt_path = "TransE_FB15k-237_0/checkpoint"
+    elif kge_model_name.lower() == 'rotate':
+        if data_type == 'wn18rr':
+            ckpt_path = "RotatE/checkpoints/RotatE_wn18rr_0/checkpoint"
+        elif data_type == 'fb15k237':
+            ckpt_path = "RotatE/checkpoints/RotatE_FB15k-237_0/checkpoint"
+    return ckpt_path
 
 def process_train_task(task):
     """단일 훈련(Train) 작업을 처리하는 함수"""
@@ -84,7 +97,8 @@ def process_train_task(task):
         
     gpu_num = gpu_queue.get()
     try:
-        ckpt_arg = f"--checkpoint_path '{config['checkpoint_path']}' " if config['checkpoint_path'] is not None else ""
+        checkpoint = get_ckpt_path(data_type, kge_model_name)
+        ckpt_arg = f"--checkpoint_path '{checkpoint}' " if config['checkpoint_path'] is not None else ""
         full_command = (
             f"CUDA_VISIBLE_DEVICES={gpu_num} python main.py "
             f"--dataset_path '{config['dataset_path']}' "
@@ -149,7 +163,8 @@ def process_eval_task(task):
         
     gpu_num = gpu_queue.get()
     try:
-        ckpt_arg = f"--checkpoint_path '{config['checkpoint_path']}' " if config['checkpoint_path'] is not None else ""
+        checkpoint = get_ckpt_path(data_type, kge_model_name)
+        ckpt_arg = f"--checkpoint_path '{checkpoint}' " if config['checkpoint_path'] is not None else ""
         full_command = (
             f"CUDA_VISIBLE_DEVICES={gpu_num} python infer.py "
             f"--dataset_path '{config['dataset_path']}' "
