@@ -306,8 +306,13 @@ if __name__ == '__main__':
     llm_config = model.config
     embed_model = GraphEnhancer(kge_embedding, kge_embedding_dim, 4, 128, 1, 1024, llm_config.hidden_size, llm_config.hidden_act)
     ckpt_dir = Path(args.checkpoint_dir)  
-    state = torch.load(ckpt_dir / "graph_model.bin", map_location="cpu")
-    embed_model.load_state_dict(state)
+    graph_model_path = ckpt_dir / "graph_model.bin"
+    if graph_model_path.exists():
+        state = torch.load(ckpt_dir / "graph_model.bin", map_location="cpu")
+        embed_model.load_state_dict(state)
+        print("✅ loaded graph_model.bin")
+    else:
+        print("⚠️ graph_model.bin 파일이 없습니다. 초기 KGE 임베딩 가중치를 그대로 사용합니다.")
     #breakpoint()
     dataset_name = os.path.basename(args.dataset_path)
     if dataset_name not in DATASET_METADATA:

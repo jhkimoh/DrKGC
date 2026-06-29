@@ -62,10 +62,10 @@ class KG_align(nn.Module):
                 a=-self.embedding_range.item(),
                 b=self.embedding_range.item()
             )
-        if self.dim_different:
-            self.W_q_r = nn.Linear(self.R_dim, self.A, bias=False)
-            self.W_o_r = nn.Linear(self.E_dim, self.R_dim, bias=False)
-            nn.init.zeros_(self.W_o_r.weight)
+        # if self.dim_different:
+        #     self.W_q_r = nn.Linear(self.R_dim, self.A, bias=False)
+        #     self.W_o_r = nn.Linear(self.E_dim, self.R_dim, bias=False)
+        #     nn.init.zeros_(self.W_o_r.weight)
         ## 2. LLM loss 를 위한 W_s, tau 정의
         self.tau = nn.Parameter(torch.tensor(1.0), requires_grad=False)
         ## 3. hyper-parameter
@@ -74,8 +74,65 @@ class KG_align(nn.Module):
         self.alpha = alpha
         self.beta = beta
         self.use_d_r = use_d_r
+    
+    def _get_target_point(self, ent_emb, rel_emb, is_tail):
+        """
+        [Atomic 함수 1] 주어진 엔티티와 관계로 목표점(Target Point) 텐서를 반환합니다.
+        - is_tail=True (Tail 예측): h + r  또는 h \circ r
+        - is_tail=False (Head 예측): t - r 또는 t \circ r^{-1}
+        """
+        if self.KGE_model.lower() == 'rotate':
+            pi = 3.14159265358979323846
+            phase_relation = rel_emb / (self.embedding_range.item() / pi)
+            re_rel = torch.cos(phase_relation)
+            im_rel = torch.sin(phase_relation)
+            re_ent, im_ent = torch.chunk(ent_emb, 2, dim=-1)
+            
+            if is_tail: # h * r
+                re_target = re_ent * re_rel - im_ent * im_rel
+                im_target = re_ent * im_rel + im_ent * re_rel
+            else: # t * r^{-1} (복소수 켤레 곱셈)
+                re_target = re_ent * re_rel + im_ent * im_rel
+                im_target = im_ent * re_rel - re_ent * im_rel
+            return torch.cat([re_target, im_target], dim=-1)
+            
+        elif self.KGE_model.lower() == 'transe': # TransE
+            if is_tail:
+                return ent_emb + rel_emb
+            else:
+                return ent_emb - rel_emb
+        else:
+            raise RuntimeError(f"[에러 감지] 지원하지 않는 model_type이 들어왔습니다: '{self.KGE_model}'")
 
+    def _calc_distance(self, v1, v2, keepdim=False):
+        """
+        [Atomic 함수 2] 두 텐서 v1, v2 사이의 KGE 거리를 계산합니다.
+        """
+        if self.KGE_model.lower() == 'rotate':
+            re_v1, im_v1 = torch.chunk(v1, 2, dim=-1)
+            re_v2, im_v2 = torch.chunk(v2, 2, dim=-1)
+            # 실수부 차이, 허수부 차이를 구한 뒤 복소수 크기(Norm) 계산 후 차원 합산
+            diff_re = re_v1 - re_v2
+            diff_im = im_v1 - im_v2
+            dist = torch.stack([diff_re, diff_im], dim=0).norm(dim=0).sum(dim=-1, keepdim=keepdim)
+            return dist
+        if self.KGE_model.lower() == 'transe': # TransE
+            return torch.norm(v1 - v2, p=1, dim=-1, keepdim=keepdim)
+        else:
+            raise RuntimeError(f"[에러 감지] 지원하지 않는 model_type이 들어왔습니다: '{self.KGE_model}'")
+    
     def _calculate_KGE_distance(self, h_fixed, r_fixed, t_fixed, cand_H, cand_T):
+        # 1. Tail 예측 거리 계산 (|h + r - cand_T|)
+        target_tail = self._get_target_point(h_fixed, r_fixed, is_tail=True).unsqueeze(1)
+        d_tail = self._calc_distance(target_tail, cand_T)
+
+        # 2. Head 예측 거리 계산 (|cand_H + r - t| -> |cand_H - (t - r)|)
+        target_head = self._get_target_point(t_fixed, r_fixed, is_tail=False).unsqueeze(1)
+        d_head = self._calc_distance(cand_H, target_head) 
+
+        return d_head, d_tail
+    
+    def _calculate_KGE_distance2(self, h_fixed, r_fixed, t_fixed, cand_H, cand_T):
         if self.KGE_model.lower() == "rotate":
             pi = 3.14159265358979323846
             #head, tail은 a+bi의 a,b를 그대로 임베딩에서 가져오고, relation은 임베딩 값 x \in R 일때, x를 각도로 봄. -> cos,sin 계산 
@@ -129,7 +186,8 @@ class KG_align(nn.Module):
         
         # kge loss
         d_head, d_tail = self._calculate_KGE_distance(head_emb, rel_emb, tail_emb, cand_emb, cand_emb)
-
+        #d_head2, d_tail2 = self._calculate_KGE_distance2(head_emb, rel_emb, tail_emb, cand_emb, cand_emb) # new _calculate_KGE_distance 
+        #breakpoint()
         is_tail = is_predicted_tail.unsqueeze(1) # [8,1]
         distances = torch.where(is_tail, d_tail, d_head) # [8,20]
 
@@ -276,22 +334,43 @@ class KG_align(nn.Module):
             rel_emb = self.relation_embedding[triple_ids[:,1]].float() # [1,500]
             is_tail = is_predicted_tail.item() if isinstance(is_predicted_tail, torch.Tensor) else is_predicted_tail
             with torch.cuda.amp.autocast(enabled=False):
-                if is_tail: # head, relation embedding 구하기 -> \delta
-                    head_emb = self.entity_embedding[triple_ids[:,0]].float()
-                    temp = head_emb + rel_emb
-                else: # relation, tail embedding 구하기 -> \delta
-                    tail_emb = self.entity_embedding[triple_ids[:,2]].float()
-                    temp = tail_emb - rel_emb
-            delta = torch.norm(query - temp, p=1, dim=-1, keepdim=True) # [1]
-            if self.beta > 0:
-                alpha = torch.exp(- self.beta * delta) # beta 2개 고르기 +arg에 추가 
-                V_final = alpha * query + (1-alpha) * temp # [1,500]
-            else:
-                V_final = self.alpha * query + (1-self.alpha)*temp 
-            score_tensor = V_final.unsqueeze(1) - all_entities.unsqueeze(0)
-            distances = torch.norm(score_tensor, p=1, dim=2)
-            scores = -distances
-            return scores
+                # 🌟 1. Target Point (temp) 구하기 (Atomic 1 호출)
+                fixed_ent_idx = 0 if is_tail else 2
+                fixed_ent = self.entity_embedding[triple_ids[:, fixed_ent_idx]].float()
+                temp = self._get_target_point(fixed_ent, rel_emb, is_tail)
+
+                # 🌟 2. Query와 Temp 사이의 거리(delta) 구하기 (Atomic 2 호출)
+                delta = self._calc_distance(query, temp, keepdim=True)
+                
+                # 🌟 3. V_final 병합 연산
+                if self.beta > 0:
+                    alpha_weight = torch.exp(- self.beta * delta)
+                    V_final = alpha_weight * query + (1 - alpha_weight) * temp 
+                else:
+                    V_final = self.alpha * query + (1 - self.alpha) * temp 
+                
+                # 🌟 4. 전체 엔티티에 대한 최종 랭킹 거리 구하기 (Atomic 2 재활용)
+                distances = self._calc_distance(V_final.unsqueeze(1), all_entities.unsqueeze(0))
+                scores = -distances
+                
+                return scores
+            #     if is_tail: # head, relation embedding 구하기 -> \delta
+            #         head_emb = self.entity_embedding[triple_ids[:,0]].float()
+            #         temp = head_emb + rel_emb
+            #     else: # relation, tail embedding 구하기 -> \delta
+            #         tail_emb = self.entity_embedding[triple_ids[:,2]].float()
+            #         temp = tail_emb - rel_emb
+            # delta = torch.norm(query - temp, p=1, dim=-1, keepdim=True) # [1]
+            # if self.beta > 0:
+            #     alpha = torch.exp(- self.beta * delta) # beta 2개 고르기 +arg에 추가 
+            #     V_final = alpha * query + (1-alpha) * temp # [1,500]
+            # else:
+            #     V_final = self.alpha * query + (1-self.alpha)*temp 
+            # score_tensor = V_final.unsqueeze(1) - all_entities.unsqueeze(0)
+            # distances = torch.norm(score_tensor, p=1, dim=2)
+            # scores2 = -distances
+            #breakpoint() # torch.allclose(socre, score2, atol=1e-6) # True 나옴 확인 
+            #return scores
         else:
             #breakpoint()
             batch_size = entity_ids.size(0)

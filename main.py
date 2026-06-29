@@ -169,11 +169,26 @@ class SavePeftModelCallback(transformers.TrainerCallback):
     def on_train_end(self, args, state, control, **kwargs):
         checkpoint_folder = os.path.join(args.output_dir, "checkpoint-final")
         print(f"Saving the final checkpoint to: {checkpoint_folder}")
-
+        os.makedirs(checkpoint_folder, exist_ok=True)
         peft_model_path = checkpoint_folder
+        # 2. LLM 가중치 저장 (Freeze 여부에 따라)
         if not self.full_args.llm_freeze:
-            if hasattr(kwargs["model"], 'save_pretrained'):
-                kwargs["model"].save_pretrained(peft_model_path)
+            if hasattr(model, 'save_pretrained'):
+                model.save_pretrained(peft_model_path)
+        else:
+            print("❄️ Final Save: LLM is frozen. Skipping base LLM weight saving.")
+            
+        # 3. 🚨 누락되었던 커스텀 모듈(Align 등) 가중치 저장 로직 추가
+        if hasattr(model, 'embed_model') and model.embed_model is not None:
+            torch.save(model.embed_model.state_dict(), os.path.join(checkpoint_folder, "graph_model.bin"))
+        if hasattr(model, 'align_model') and model.align_model is not None:
+            torch.save(model.align_model.state_dict(), os.path.join(checkpoint_folder, "align_model.bin"))
+        if hasattr(model, 'extract_model') and model.extract_model is not None:
+            torch.save(model.extract_model.state_dict(), os.path.join(checkpoint_folder, "extract_model.bin"))
+        if hasattr(model, 'enhanced_model') and model.enhanced_model is not None:
+            torch.save(model.enhanced_model.state_dict(), os.path.join(checkpoint_folder, "enhanced_model.bin"))
+            
+        print(f"✅ Final checkpoint successfully saved at {checkpoint_folder}")
 
 
 
@@ -232,7 +247,7 @@ def train():
         raise ValueError(f"Unsupported KGE model: {args.kge_model_name}. Supported models: {list(KGE_MODEL.keys())}")
     R_hidden = KGE_MODEL[dataset_name]['R_dim']
     gamma = KGE_MODEL[dataset_name]['gamma']
-    #breakpoint()
+    breakpoint()
     if args.use_extract: #수정한 부분(토큰추가, extract_model-인코더,디코더, model-forward수정)
         if args.new_token:
             tokenizer.add_tokens(['<|extract_kg|>'])
