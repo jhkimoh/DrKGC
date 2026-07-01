@@ -335,7 +335,7 @@ class DrKGC_align(DrKGC):
         batch_size = len(candidates)
         #breakpoint()
         prompt = prompt.strip()
-        full_texts = [prompt + " " + cand for cand in candidates]
+        full_texts = [prompt + " " + cand + self.tokenizer.eos_token for cand in candidates]
         inputs = self.tokenizer(full_texts, return_tensors="pt", padding=True)
         input_ids = inputs.input_ids.cuda()
         attention_masks = inputs.attention_mask.cuda()
