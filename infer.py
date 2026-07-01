@@ -5,7 +5,7 @@ from time import time
 from tqdm import trange, tqdm
 import argparse
 from pathlib import Path
-
+import sys
 import bitsandbytes as bnb
 import torch
 
@@ -110,7 +110,14 @@ class Evaluator:
         generated = []
         for ex_idx, ex in enumerate(tqdm(dataset)):
             prompt = ex['input']
-
+            llm_conf_probs = None
+            if self.args.llm_confidence:
+                llm_conf_probs = self.model.compute_llm_confidence( 
+                    prompt=prompt, 
+                    candidates=ex['rank_entities'], 
+                    query_ids=torch.LongTensor([ex['query_entity_id']]).cuda(), 
+                    entity_ids=torch.LongTensor([ex['rank_entities_id']]).cuda()
+                ) 
             inputs = self.tokenizer(prompt, return_tensors='pt')
             input_ids = inputs.input_ids.cuda() 
             self.generation_config.eos_token_id = self.tokenizer.eos_token_id 
@@ -135,7 +142,8 @@ class Evaluator:
                     subgraph=subgraph, 
                     generation_config=self.generation_config,
                     triplet_ids = triplet_ids,
-                    topk_ids = topk_ids
+                    topk_ids = topk_ids,
+                    llm_conf_probs = llm_conf_probs
                 ) # outputs.keys() 'sequences' 'past_key_values'
             else:
                 output = self.model.generate(
@@ -177,17 +185,17 @@ class Evaluator:
                     })
                 target_score_val = output[0, target_id].item()
                 # # A. 모든 쿼리 성적표를 JSON 딕셔너리에 저장
-                debug_log_dict[query_key] = {
-                    "rank": ranking,
-                    "target_score": target_score_val,
-                    "top10_preds": argsort[0, :10].cpu().tolist()
-                }
+                # debug_log_dict[query_key] = {
+                #     "rank": ranking,
+                #     "target_score": target_score_val,
+                #     "top10_preds": argsort[0, :10].cpu().tolist()
+                # }
                 
                 # # B. 특정 쿼리의 전체 점수 텐서 추출 (.npy)
                 # # 추출하신 RotatE 텐서와 동일한 쿼리를 지정합니다.
-                if h == 1678 and r == 7 and t == 9202:
-                    np.save(f"drkgc_tensor_{query_key}.npy", output[0].cpu().numpy())
-                    print(f"\n🚨 [디버그] {query_key}의 DrKGC 전체 점수 텐서 저장 완료!")
+                # if h == 1678 and r == 7 and t == 9202:
+                #     np.save(f"drkgc_tensor_{query_key}.npy", output[0].cpu().numpy())
+                #     print(f"\n🚨 [디버그] {query_key}의 DrKGC 전체 점수 텐서 저장 완료!")
                 top10_ids = argsort[0, :10].cpu().tolist()
                 top10_preds = [self.kge_id2entity.get(eid, f"[UNKNOWN_ID_{eid}]") for eid in top10_ids]
                 top10_scores = [round(output[0, eid].item(), 4) for eid in top10_ids]
@@ -247,11 +255,11 @@ class Evaluator:
         print("ranking metrics:")
         print(metrics)
 
-        if self.args.use_align:
-            import json
-            with open('drkgc_debug_log.json', 'w', encoding='utf-8') as f:
-                json.dump(debug_log_dict, f, indent=4)
-            print("\n✅ 모든 쿼리의 순위/Top10 결과를 'drkgc_debug_log.json'에 저장했습니다.")
+        # if self.args.use_align:
+        #     import json
+        #     with open('drkgc_debug_log.json', 'w', encoding='utf-8') as f:
+        #         json.dump(debug_log_dict, f, indent=4)
+        #     print("\n✅ 모든 쿼리의 순위/Top10 결과를 'drkgc_debug_log.json'에 저장했습니다.")
 
         with open(self.log_file_path, 'w', encoding='utf-8') as log_file:
             log_line = f'ranking metrics: {metrics}\n'
@@ -312,7 +320,10 @@ if __name__ == '__main__':
         embed_model.load_state_dict(state)
         print("✅ loaded graph_model.bin")
     else:
-        print("⚠️ graph_model.bin 파일이 없습니다. 초기 KGE 임베딩 가중치를 그대로 사용합니다.")
+        print(f"\n❌ [CRITICAL ERROR] '{graph_model_path}' 파일을 찾을 수 없습니다!")
+        print(f"   학습된 graph_model.bin이 없으면 추론 시 무작위 가중치를 사용하여 성능이 붕괴됩니다.")
+        print(f"   checkpoint_dir 경로가 올바른지 확인해주세요: {args.checkpoint_dir}")
+        sys.exit(1) # 1은 에러로 종료됨을 의미
     #breakpoint()
     dataset_name = os.path.basename(args.dataset_path)
     if dataset_name not in DATASET_METADATA:
@@ -331,19 +342,19 @@ if __name__ == '__main__':
         enhanced_model.cuda()
         model = DrKGC_enhanced(tokenizer,model,embed_model,enhanced_model,kgc_loss_weight)
     elif args.use_align:
-        # print("⚠️ [DEBUG MODE] 순수 KGE 체크포인트를 로드하여 순위 계산을 테스트합니다.")
+        print("⚠️ [DEBUG MODE] 순수 KGE 체크포인트를 로드하여 순위 계산을 테스트합니다.")
         
-        # if hasattr(args, 'checkpoint_path') and args.checkpoint_path is not None:
-        #     kge_state_dict = torch.load(args.checkpoint_path, map_location="cpu")
-        #     pretrained_ent = kge_state_dict['model_state_dict']['entity_embedding']
-        #     pretrained_rel = kge_state_dict['model_state_dict']['relation_embedding']
+        if hasattr(args, 'checkpoint_path') and args.checkpoint_path is not None:
+            kge_state_dict = torch.load(args.checkpoint_path, map_location="cpu")
+            pretrained_ent = kge_state_dict['model_state_dict']['entity_embedding']
+            pretrained_rel = kge_state_dict['model_state_dict']['relation_embedding']
             
-        #     align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.alpha, args.beta, args.use_d_r, 
-        #                            pretrained_ent=pretrained_ent, pretrained_rel=pretrained_rel, 
-        #                            KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
-        align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.alpha, args.beta, args.use_d_r, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
-        align_state = torch.load(ckpt_dir / "align_model.bin", map_location="cpu")
-        align_model.load_state_dict(align_state)
+            align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.alpha, args.beta, args.use_d_r, 
+                                   pretrained_ent=pretrained_ent, pretrained_rel=pretrained_rel, 
+                                   KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
+        # align_model = KG_align(E_dim, R_dim, model.config.hidden_size, args.rand_neg, args.alpha, args.beta, args.use_d_r, KGE_model_name=args.kge_model_name, R_dim=R_hidden, gamma=gamma)
+        # align_state = torch.load(ckpt_dir / "align_model.bin", map_location="cpu")
+        # align_model.load_state_dict(align_state)
         align_model.cuda()
         model = DrKGC_align(tokenizer, model, embed_model, align_model, args.lm_loss, args.kge_loss, args.struct_loss, args.align_loss)
     else:

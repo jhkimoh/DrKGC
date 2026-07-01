@@ -20,6 +20,7 @@ parser.add_argument(
 )
 parser.add_argument("--all", action="store_true", help="Process all data types.")
 parser.add_argument("--evaluate", action="store_true", help="Run evaluation mode.")
+parser.add_argument("--train", action="store_true", help="Run evaluation mode.")
 parser.add_argument(
     "--overwrite_gen", action="store_true", help="Overwrite existing generation(training) files."
 )
@@ -45,7 +46,8 @@ data_configs = {
         "workers": 16,
         "learning_rate": 1e-4,
         "llm_freeze": "True",
-        "peft_model_path": "results/wn18rr/llama3_seed1213_origin/checkpoint-final"
+        "peft_model_path": "results/wn18rr/llama3_seed1213_origin/checkpoint-final",
+        "checkpoint_dir": "results/wn18rr/llama3_seed1213_origin/checkpoint-final"
     },
     "fb15k237": {
         "dataset_path": "dataset/fb15k237",
@@ -59,7 +61,8 @@ data_configs = {
         "workers": 16,
         "learning_rate": 1e-4,
         "llm_freeze": "True",
-        "peft_model_path": "results/fb15k237/llama3_seed1213_origin/checkpoint-final"
+        "peft_model_path": "results/fb15k237/llama3_seed1213_origin/checkpoint-final",
+        "checkpoint_dir": "results/fb15k237/llama3_seed1213_origin/checkpoint-final"
     }
 }
 
@@ -149,14 +152,18 @@ def process_eval_task(task):
     beta = alpha_beta["beta"]
     suffix = f"a{alpha}" if alpha in [0.0, 1.0] else f"b{beta}"
     dr_suffix = "_dr" if use_d_r else ""
-    exp_name = f"llama3_seed{seed}_lm{lm_loss}_st{struct_loss}_al{align_loss}{dr_suffix}_{kge_model_name}"
-    eval_run_name = f"{data_type[:2]}_val_seed{seed}_lm{lm_loss}_st{struct_loss}_al{align_loss}{dr_suffix}_{kge_model_name}_{suffix}"
+    #exp_name = f"llama3_seed{seed}_lm{lm_loss}_st{struct_loss}_al{align_loss}{dr_suffix}_{kge_model_name}"
+    exp_name = f"llama3_seed{seed}_lm{lm_loss}_st{struct_loss}_al{align_loss}{dr_suffix}"
+    #eval_run_name = f"{data_type[:2]}_val_seed{seed}_lm{lm_loss}_st{struct_loss}_al{align_loss}{dr_suffix}_{kge_model_name}_{suffix}"
+    eval_run_name = f"{data_type[:2]}_{kge_model_name}_kgt5_{suffix}" ##
     exp_output_dir = os.path.join(args.output_folder, data_type, exp_name)
     final_checkpoint_path = os.path.join(exp_output_dir, "checkpoint-final")
     
     if not os.path.exists(final_checkpoint_path):
         return f"⚠️ Skipped (No checkpoint): [{data_type}] {exp_name}"
-        
+    ## 죄송;; 이런식으로 바꾸면 안되는데 
+    exp_output_dir = "{data_type[:2]}_kgt5" ##
+    os.makedirs(exp_output_dir, exist_ok=True) ## 
     eval_result_file = os.path.join(exp_output_dir, f"metrics_{suffix}.txt")
     if os.path.exists(eval_result_file) and not args.overwrite_eval:
         return f"✅ Skipped (Already evaluated): [{data_type}] {exp_name}_{suffix}"
@@ -169,7 +176,7 @@ def process_eval_task(task):
             f"CUDA_VISIBLE_DEVICES={gpu_num} python infer.py "
             f"--dataset_path '{config['dataset_path']}' "
             f"--kge_embedding_path '{config['kge_embedding_path']}' "
-            f"--checkpoint_dir '{final_checkpoint_path}' "
+            f"--checkpoint_dir '{config['checkpoint_dir']}' "
             f"--model_name_or_path 'meta-llama/Meta-Llama-3-8B' "
             f"--model_type llama "
             f"--num_return_sequences 1 "
@@ -196,6 +203,7 @@ def process_eval_task(task):
             f"--peft_model_path {config['peft_model_path']} "
             f"--use_d_r {use_d_r} "
             f"--kge_model_name {kge_model_name} "
+            f"--llm_confidence True " ##
         )
         print(f"\n[GPU {gpu_num}] 🔎 Evaluating [{data_type}]: Seed={seed}, LM={lm_loss}, ST={struct_loss}, AL={align_loss}, {suffix}")
         subprocess.run(full_command, shell=True, check=True)
@@ -212,21 +220,22 @@ if __name__ == "__main__":
     if not target_data_types:
         print("❌ No data type specified. Use --all or --data_type <name>")
         exit(1)
-    train_tasks = []
-    for data_type in target_data_types:
-        seeds = 1213
-        struct_loss = 0.0
-        target_configs = [
-            (0.0, 1.0, 0.01, True, 'TransE'), (0.0, 1.0, 0.01, True, 'RotatE'), # 세팅 1: LLM & Align 학습
-            #(0.0, 1.0, 0.0, False), #(0.0, 0.0,  1.0)  # 세팅 2: KGE만 학습
-        ]
-        for lm_loss, align_loss, kge_loss, use_d_r, kge_model_name in target_configs:
-            exp_params = (seeds, lm_loss, struct_loss, align_loss, kge_loss, use_d_r, kge_model_name)
-            train_tasks.append((data_type, exp_params))
-    if train_tasks:
-        print(f"🚀 총 {len(train_tasks)}개의 Train 작업을 {len(available_gpus)}개의 GPU에 분배하여 시작합니다...")
-        with ThreadPoolExecutor(max_workers=len(available_gpus)) as executor:
-            list(tqdm(executor.map(process_train_task, train_tasks), total=len(train_tasks), desc="Global Training"))
+    if args.train:
+        train_tasks = []
+        for data_type in target_data_types:
+            seeds = 1213
+            struct_loss = 0.0
+            target_configs = [
+                #(0.0, 1.0, 0.01, True, 'TransE'), (0.0, 1.0, 0.01, True, 'RotatE'), # 세팅 1: LLM & Align 학습
+                #(0.0, 1.0, 0.0, False), #(0.0, 0.0,  1.0)  # 세팅 2: KGE만 학습
+            ]
+            for lm_loss, align_loss, kge_loss, use_d_r, kge_model_name in target_configs:
+                exp_params = (seeds, lm_loss, struct_loss, align_loss, kge_loss, use_d_r, kge_model_name)
+                train_tasks.append((data_type, exp_params))
+        if train_tasks:
+            print(f"🚀 총 {len(train_tasks)}개의 Train 작업을 {len(available_gpus)}개의 GPU에 분배하여 시작합니다...")
+            with ThreadPoolExecutor(max_workers=len(available_gpus)) as executor:
+                list(tqdm(executor.map(process_train_task, train_tasks), total=len(train_tasks), desc="Global Training"))
     if args.evaluate:
         eval_tasks = []
         for data_type in target_data_types:

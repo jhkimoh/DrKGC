@@ -319,18 +319,23 @@ class KG_align(nn.Module):
         return loss
 
 
-    def forward(self, last_hidden_state, triple_ids, entity_ids, is_predicted_tail, is_infer):
+    def forward(self, last_hidden_state, triple_ids, entity_ids, is_predicted_tail, is_infer, llm_conf_probs=None):
         last_hidden_state = last_hidden_state.float()
         #breakpoint()
         if is_infer:# infer 모든 t에 대해 ranking 
-            # (1) V_final 구하기 
-            Ah_x = self.W_q(last_hidden_state).float() # [8, 500]
-            if self.use_d_r:
-                d_r = self.d_r[triple_ids[:,1]].float()
-                query = Ah_x *d_r
+            if llm_conf_probs is not None:
+                cand_ents = self.entity_embedding[entity_ids].float() # [1, 20, E_dim]
+                llm_conf_probs = llm_conf_probs.unsqueeze(0)
+                q_LLM = torch.bmm(llm_conf_probs.unsqueeze(1), cand_ents).squeeze(1) 
+                query = q_LLM # 여기에 KGE로 학습된 $e_c$를 곱하면, LLM이 생각하는 정답의 KG-space 위치를 구할 수 있음.
             else:
-                query = Ah_x
-            #query = self.W_q(last_hidden_state).float() # [1,4096]
+                # (1) V_final 구하기 
+                Ah_x = self.W_q(last_hidden_state).float() # [8, 500]
+                if self.use_d_r:
+                    d_r = self.d_r[triple_ids[:,1]].float()
+                    query = Ah_x *d_r
+                else:
+                    query = Ah_x
             all_entities = self.entity_embedding.float()
             rel_emb = self.relation_embedding[triple_ids[:,1]].float() # [1,500]
             is_tail = is_predicted_tail.item() if isinstance(is_predicted_tail, torch.Tensor) else is_predicted_tail
@@ -342,36 +347,19 @@ class KG_align(nn.Module):
 
                 # 🌟 2. Query와 Temp 사이의 거리(delta) 구하기 (Atomic 2 호출)
                 delta = self._calc_distance(query, temp, keepdim=True)
-                
+                    
                 # 🌟 3. V_final 병합 연산
                 if self.beta > 0:
                     alpha_weight = torch.exp(- self.beta * delta)
                     V_final = alpha_weight * query + (1 - alpha_weight) * temp 
                 else:
                     V_final = self.alpha * query + (1 - self.alpha) * temp 
-                
+                    
                 # 🌟 4. 전체 엔티티에 대한 최종 랭킹 거리 구하기 (Atomic 2 재활용)
                 distances = self._calc_distance(V_final.unsqueeze(1), all_entities.unsqueeze(0))
                 scores = -distances
-                
+                    
                 return scores
-                if is_tail: # head, relation embedding 구하기 -> \delta
-                    head_emb = self.entity_embedding[triple_ids[:,0]].float()
-                    temp = head_emb + rel_emb
-                else: # relation, tail embedding 구하기 -> \delta
-                    tail_emb = self.entity_embedding[triple_ids[:,2]].float()
-                    temp = tail_emb - rel_emb
-            delta = torch.norm(query - temp, p=1, dim=-1, keepdim=True) # [1]
-            if self.beta > 0:
-                alpha = torch.exp(- self.beta * delta) # beta 2개 고르기 +arg에 추가 
-                V_final = alpha * query + (1-alpha) * temp # [1,500]
-            else:
-                V_final = self.alpha * query + (1-self.alpha)*temp 
-            score_tensor = V_final.unsqueeze(1) - all_entities.unsqueeze(0)
-            distances = torch.norm(score_tensor, p=1, dim=2)
-            scores = -distances
-            #breakpoint() # torch.allclose(socre, score2, atol=1e-6) # True 나옴 확인 
-            return scores
         else:
             #breakpoint()
             batch_size = entity_ids.size(0)

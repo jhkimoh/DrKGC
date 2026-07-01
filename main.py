@@ -142,6 +142,7 @@ class SavePeftModelCallback(transformers.TrainerCallback):
             checkpoint_folder = os.path.join(args.output_dir, f"checkpoint-{state.global_step}")
             print(f"Saving checkpoint at step {state.global_step} to: {checkpoint_folder}")
 
+
         os.makedirs(checkpoint_folder, exist_ok=True)
         peft_model_path = checkpoint_folder
         model = kwargs["model"]
@@ -150,10 +151,11 @@ class SavePeftModelCallback(transformers.TrainerCallback):
                 model.save_pretrained(peft_model_path)
         else:
             print("❄️ LLM is frozen. Skipping base LLM weight saving to save storage space.")
+        #breakpoint()
         
         # 🌟 [핵심] 커스텀 모듈들 명시적 수동 저장
-        if hasattr(model, 'embed_model') and model.embed_model is not None:
-            torch.save(model.embed_model.state_dict(), os.path.join(checkpoint_folder, "graph_model.bin"))
+        if hasattr(model, 'graph_model') and model.graph_model is not None:
+            torch.save(model.graph_model.state_dict(), os.path.join(checkpoint_folder, "graph_model.bin"))
         if hasattr(model, 'align_model') and model.align_model is not None:
             torch.save(model.align_model.state_dict(), os.path.join(checkpoint_folder, "align_model.bin"))
         if hasattr(model, 'extract_model') and model.extract_model is not None:
@@ -162,9 +164,10 @@ class SavePeftModelCallback(transformers.TrainerCallback):
             torch.save(model.enhanced_model.state_dict(), os.path.join(checkpoint_folder, "enhanced_model.bin"))
             
         # Comment out this code if need training status
-        for file_name in os.listdir(checkpoint_folder):
-            if file_name not in self.KEEP_FILES:
-                os.remove(os.path.join(checkpoint_folder, file_name))
+        if "checkpoint-final" not in checkpoint_folder:
+            for file_name in os.listdir(checkpoint_folder):
+                if file_name not in self.KEEP_FILES:
+                    os.remove(os.path.join(checkpoint_folder, file_name))
 
     def on_train_end(self, args, state, control, **kwargs):
         checkpoint_folder = os.path.join(args.output_dir, "checkpoint-final")
@@ -179,8 +182,8 @@ class SavePeftModelCallback(transformers.TrainerCallback):
             print("❄️ Final Save: LLM is frozen. Skipping base LLM weight saving.")
             
         # 3. 🚨 누락되었던 커스텀 모듈(Align 등) 가중치 저장 로직 추가
-        if hasattr(model, 'embed_model') and model.embed_model is not None:
-            torch.save(model.embed_model.state_dict(), os.path.join(checkpoint_folder, "graph_model.bin"))
+        if hasattr(model, 'graph_model') and model.graph_model is not None:
+            torch.save(model.graph_model.state_dict(), os.path.join(checkpoint_folder, "graph_model.bin"))
         if hasattr(model, 'align_model') and model.align_model is not None:
             torch.save(model.align_model.state_dict(), os.path.join(checkpoint_folder, "align_model.bin"))
         if hasattr(model, 'extract_model') and model.extract_model is not None:
@@ -247,7 +250,7 @@ def train():
         raise ValueError(f"Unsupported KGE model: {args.kge_model_name}. Supported models: {list(KGE_MODEL.keys())}")
     R_hidden = KGE_MODEL[dataset_name]['R_dim']
     gamma = KGE_MODEL[dataset_name]['gamma']
-    breakpoint()
+    #breakpoint()
     if args.use_extract: #수정한 부분(토큰추가, extract_model-인코더,디코더, model-forward수정)
         if args.new_token:
             tokenizer.add_tokens(['<|extract_kg|>'])

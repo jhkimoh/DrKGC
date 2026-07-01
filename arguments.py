@@ -47,6 +47,7 @@ class Arguments:
     llm_freeze: bool = field(default=False)
     peft_model_path: str = field(default=None) ## llm freeze 할때 사용하는 미리 validation dataset으로 peft 한 llm path 
     use_d_r: bool = field(default=False)
+    llm_confidence: bool = field(default=False) ## infer.py에서 llm confidence 방식 사용 여부 
 
 @dataclass
 class FinetuningArguments(Seq2SeqTrainingArguments):

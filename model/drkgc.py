@@ -2,6 +2,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from torch import nn
+import torch.nn.functional as F
 from transformers import GenerationConfig, Seq2SeqTrainer, LogitsProcessor, LogitsProcessorList
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from collections import defaultdict
@@ -289,7 +290,7 @@ class DrKGC_align(DrKGC):
         torch.save(self.align_model.state_dict(), save_dir / "align_model.bin")
 
     @torch.no_grad()
-    def generate(self, input_ids, attention_mask, query_ids, entity_ids, triple_ids, is_predicted_tail, triplet_ids, topk_ids, subgraph=None, generation_config=None):
+    def generate(self, input_ids, attention_mask, query_ids, entity_ids, triple_ids, is_predicted_tail, triplet_ids, topk_ids, llm_conf_probs=None, subgraph=None, generation_config=None):
         # 1. 입력 임베딩 준비
         inputs_embeds = self._replace_placeholders(input_ids, query_ids, entity_ids, subgraph)
         # 2. LLM을 한 번 통과시켜서 H (last_hidden_states) 추출
@@ -316,7 +317,7 @@ class DrKGC_align(DrKGC):
         last_hidden_state = last_hidden_states[:, -1, :] # [1, 4096]
         # 우선 train부터 완료하고 돌아와서 다시
         #breakpoint()
-        scores = self.align_model(last_hidden_state, triplet_ids, topk_ids, is_predicted_tail, True)
+        scores = self.align_model(last_hidden_state, triplet_ids, topk_ids, is_predicted_tail, True, llm_conf_probs=llm_conf_probs)
         return scores # [1,40943]
         #if generation_config is None:
         #    generation_config = GenerationConfig()
@@ -328,3 +329,35 @@ class DrKGC_align(DrKGC):
         #    generation_config=generation_config,
         #    logits_processor=logits_processor
         #)
+
+    @torch.no_grad()
+    def compute_llm_confidence(self, prompt, candidates, query_ids, entity_ids):
+        batch_size = len(candidates)
+        #breakpoint()
+        prompt = prompt.strip()
+        full_texts = [prompt + " " + cand for cand in candidates]
+        inputs = self.tokenizer(full_texts, return_tensors="pt", padding=True)
+        input_ids = inputs.input_ids.cuda()
+        attention_masks = inputs.attention_mask.cuda()
+        prompt_ids = [self.tokenizer.bos_token_id] + self.tokenizer.encode(prompt, add_special_tokens=False)
+        prompt_len = len(prompt_ids)
+        b_query_ids = query_ids.repeat(batch_size) if query_ids.dim() == 1 else query_ids.repeat(batch_size, 1)
+        b_entity_ids = entity_ids.repeat(batch_size) if entity_ids.dim() == 1 else entity_ids.repeat(batch_size, 1)
+        inputs_embeds = self._replace_placeholders(input_ids, b_query_ids, b_entity_ids)
+        outputs = self.llm_model(inputs_embeds=inputs_embeds, attention_mask=attention_masks)
+        logits = outputs.logits # [20, seq_len, vocab_size]
+        log_probs = F.log_softmax(logits, dim=-1)
+        scores = []
+        for i in range(batch_size):
+            seq_len = attention_masks[i].sum().item()
+            cand_labels = input_ids[i, prompt_len: seq_len] # torch.Size([3])
+            cand_logits = log_probs[i, prompt_len-1: seq_len-1] # torch.Size([3, 128256])
+            if len(cand_labels)>0:
+                cand_score = cand_logits[torch.arange(len(cand_labels)),cand_labels].sum().item()
+                #cand_score = cand_score / len(cand_labels)
+            else:
+                cand_score = -float('inf')
+            scores.append(cand_score)
+        scores_tensor = torch.tensor(scores, device=input_ids.device) # KGT5의 방식을 사용하면, 각 candidate에 대한 LLM의 confidence값을 구할 수 있음. LLM(c)
+        probs = F.softmax(scores_tensor, dim=0) # softmax 해주기 # 주어진 confidence를 softmax하면 각 candidate에 대한 가중치를 표준화하여 나타낼 수 있음.
+        return probs
