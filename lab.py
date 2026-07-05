@@ -35,10 +35,10 @@ args = parser.parse_args()
 
 data_configs = {
     "wn18rr": {
-        "dataset_path": "dataset/wn18rr",
+        "dataset_path": "dataset_merged/wn18rr",
         "data_path": "KG_data/wn18rr",
         "kge_embedding_path": "RotatE/checkpoints/RotatE_wn18rr_0/checkpoint",
-        "checkpoint_path": "TransE_wn18rr_0/checkpoint",
+        "checkpoint_path": "TransE_wn18rr_0/checkpoint", # 이게 None이면 random emb으로 처음 align_model kg embedding 시작 
         "epochs": 10,
         "batch_size": 8,
         "grad_accum_steps": 1,
@@ -50,7 +50,7 @@ data_configs = {
         "checkpoint_dir": "results/wn18rr/llama3_seed1213_origin/checkpoint-final"
     },
     "fb15k237": {
-        "dataset_path": "dataset/fb15k237",
+        "dataset_path": "dataset_merged/fb15k237",
         "data_path": "KG_data/fb15k-237",
         "kge_embedding_path": "RotatE/checkpoints/RotatE_FB15k-237_0/checkpoint",
         "checkpoint_path": "TransE_FB15k-237_0/checkpoint",
@@ -145,26 +145,24 @@ def process_train_task(task):
 def process_eval_task(task):
     """단일 평가(Eval) 작업을 처리하는 함수"""
     data_type, exp_params = task
-    seed, lm_loss, struct_loss, align_loss, kge_loss, use_d_r, kge_model_name, alpha_beta = exp_params
+    seed, lm_loss, struct_loss, align_loss, kge_loss, use_d_r, kge_model_name, alpha_beta, tau = exp_params
     config = data_configs[data_type]
-    
+
     alpha = alpha_beta["alpha"]
     beta = alpha_beta["beta"]
     suffix = f"a{alpha}" if alpha in [0.0, 1.0] else f"b{beta}"
     dr_suffix = "_dr" if use_d_r else ""
     #exp_name = f"llama3_seed{seed}_lm{lm_loss}_st{struct_loss}_al{align_loss}{dr_suffix}_{kge_model_name}"
-    exp_name = f"llama3_seed{seed}_lm{lm_loss}_st{struct_loss}_al{align_loss}{dr_suffix}"
+    exp_name = f"llama3_seed{seed}_{kge_model_name}_kgt5"
     #eval_run_name = f"{data_type[:2]}_val_seed{seed}_lm{lm_loss}_st{struct_loss}_al{align_loss}{dr_suffix}_{kge_model_name}_{suffix}"
-    eval_run_name = f"{data_type[:2]}_{kge_model_name}_kgt5_{suffix}" ##
+    eval_run_name = f"{data_type[:2]}_{kge_model_name}_kgt5_{suffix}_tau{tau}" ##
     exp_output_dir = os.path.join(args.output_folder, data_type, exp_name)
     final_checkpoint_path = os.path.join(exp_output_dir, "checkpoint-final")
     
-    if not os.path.exists(final_checkpoint_path):
-        return f"⚠️ Skipped (No checkpoint): [{data_type}] {exp_name}"
+    # if not os.path.exists(final_checkpoint_path):
+    #     return f"⚠️ Skipped (No checkpoint): [{data_type}] {exp_name}"
     ## 죄송;; 이런식으로 바꾸면 안되는데 
-    exp_output_dir = "{data_type[:2]}_kgt5" ##
-    os.makedirs(exp_output_dir, exist_ok=True) ## 
-    eval_result_file = os.path.join(exp_output_dir, f"metrics_{suffix}.txt")
+    eval_result_file = os.path.join(exp_output_dir, f"metrics_{suffix}_tau{tau}.txt")
     if os.path.exists(eval_result_file) and not args.overwrite_eval:
         return f"✅ Skipped (Already evaluated): [{data_type}] {exp_name}_{suffix}"
         
@@ -204,6 +202,8 @@ def process_eval_task(task):
             f"--use_d_r {use_d_r} "
             f"--kge_model_name {kge_model_name} "
             f"--llm_confidence True " ##
+            f"--exp_output_dir {exp_output_dir} " ## 
+            f"--tau {tau} "
         )
         print(f"\n[GPU {gpu_num}] 🔎 Evaluating [{data_type}]: Seed={seed}, LM={lm_loss}, ST={struct_loss}, AL={align_loss}, {suffix}")
         subprocess.run(full_command, shell=True, check=True)
@@ -245,13 +245,16 @@ if __name__ == "__main__":
                 (0.0, 1.0, 0.01, True, 'TransE'), (0.0, 1.0, 0.01, True, 'RotatE'), # 세팅 1: LLM & Align 학습
                 #(0.0, 1.0, 0.0, False), #(0.0, 0.0,  1.0)  # 세팅 2: KGE만 학습
             ]
-            alpha_beta_list = [{"alpha": 0.0, "beta": 0.0}, {"alpha": 1.0, "beta": 0.0}]
-            for b in [0.01, 0.05]:
-                alpha_beta_list.append({"alpha": -1.0, "beta": b})
+            alpha_beta_list = [{"alpha": 1.0, "beta": 0.0}]
+            # alpha_beta_list = [{"alpha": 0.0, "beta": 0.0}, {"alpha": 1.0, "beta": 0.0}]
+            # for b in [0.01, 0.05]:
+            #     alpha_beta_list.append({"alpha": -1.0, "beta": b})
+            taus = [1.0]
             for lm_loss, align_loss, kge_loss, use_d_r, kge_model_name in target_configs:
                 for alpha_beta in alpha_beta_list:
-                    exp_params = (seeds, lm_loss, struct_loss, align_loss, kge_loss, use_d_r, kge_model_name, alpha_beta)
-                    eval_tasks.append((data_type, exp_params))
+                    for tau in taus:
+                        exp_params = (seeds, lm_loss, struct_loss, align_loss, kge_loss, use_d_r, kge_model_name, alpha_beta, tau)
+                        eval_tasks.append((data_type, exp_params))
         if eval_tasks:
             print(f"🚀 총 {len(eval_tasks)}개의 Eval 작업을 {len(available_gpus)}개의 GPU에 분배하여 시작합니다...")
             with ThreadPoolExecutor(max_workers=len(available_gpus)) as executor:

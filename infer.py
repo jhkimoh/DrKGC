@@ -48,8 +48,10 @@ class Evaluator:
         self.tokenizer = tokenizer
         self.model = model
         self.data_module = data_module
-
-        self.output_dir = os.path.dirname(args.checkpoint_dir)
+        if args.llm_confidence:
+            self.output_dir = args.exp_output_dir 
+        else:
+            self.output_dir = os.path.dirname(args.checkpoint_dir)
         if args.use_align:
             alpha_val = getattr(args, 'alpha', -1.0)
             beta_val = getattr(args, 'beta', 0.0)
@@ -86,6 +88,15 @@ class Evaluator:
         else:
             self.log_file_path = os.path.join(self.output_dir, 'metrics.txt')
 
+        self.llm_conf_probs = None
+        if args.llm_confidence and hasattr(args, 'exp_output_dir'):
+            dataset_name_prefix = os.path.basename(args.dataset_path)[:2]
+            conf_probs_file_name = f"{dataset_name_prefix}_{args.kge_model_name}_logits_merged.pt"
+            conf_probs_path = os.path.join(args.exp_output_dir, conf_probs_file_name)
+            if os.path.exists(conf_probs_path):
+                print(f"📦 [llm_conf_probs] 기존에 생성된 llm_conf_probs를 로드합니다: {conf_probs_path}")
+                self.llm_conf_probs = torch.load(conf_probs_path, map_location='cpu')
+
     @staticmethod
     def read_triple(file_path, entity2id, relation2id):
         '''
@@ -97,6 +108,28 @@ class Evaluator:
                 h, r, t = line.strip().split('\t')
                 triples.append((entity2id[h], relation2id[r], entity2id[t]))
         return triples
+
+    @torch.no_grad()
+    def save_llm_confidence(self, dataset, file_name):
+        #breakpoint()
+        if not self.args.llm_confidence:
+            raise ValueError("self.args.llm_confidence is False!")
+        self.model.eval()
+        confidence_cache = {}
+        for ex_idx, ex in enumerate(tqdm(dataset)):
+            llm_conf_probs = self.model.compute_llm_confidence( 
+                prompt=ex['input'], 
+                candidates=ex['rank_entities'], 
+                query_ids=torch.LongTensor([ex['query_entity_id']]).cuda(), 
+                entity_ids=torch.LongTensor([ex['rank_entities_id']]).cuda()
+            ) 
+            h, r, t = ex['triplet_id']
+            pred_type = ex.get('type').split('_')[-1] # 'head' | 'tail'
+            query_key = f"{ex_idx}_{h}_{r}_{t}_{pred_type}"
+            confidence_cache[query_key] = llm_conf_probs.cpu()
+        save_path = os.path.join(self.output_dir, file_name)
+        torch.save(confidence_cache, save_path)
+        print(f"\n✅ [성공] LLM Confidence 캐시가 다음 경로에 저장되었습니다: {save_path}")
 
     @torch.no_grad()
     def ranking_metrics(self, dataset):
@@ -112,12 +145,18 @@ class Evaluator:
             prompt = ex['input']
             llm_conf_probs = None
             if self.args.llm_confidence:
-                llm_conf_probs = self.model.compute_llm_confidence( 
-                    prompt=prompt, 
-                    candidates=ex['rank_entities'], 
-                    query_ids=torch.LongTensor([ex['query_entity_id']]).cuda(), 
-                    entity_ids=torch.LongTensor([ex['rank_entities_id']]).cuda()
-                ) 
+                h, r, t = ex['triplet_id']
+                pred_type = ex.get('type').split('_')[-1] # 'head' | 'tail'
+                query_key = f"{ex_idx}_{h}_{r}_{t}_{pred_type}"
+                if self.llm_conf_probs is not None and query_key in self.llm_conf_probs:
+                    llm_conf_probs = self.llm_conf_probs[query_key].cuda()
+                else:
+                    llm_conf_probs = self.model.compute_llm_confidence( 
+                        prompt=prompt, 
+                        candidates=ex['rank_entities'], 
+                        query_ids=torch.LongTensor([ex['query_entity_id']]).cuda(), 
+                        entity_ids=torch.LongTensor([ex['rank_entities_id']]).cuda()
+                    ) 
             inputs = self.tokenizer(prompt, return_tensors='pt')
             input_ids = inputs.input_ids.cuda() 
             self.generation_config.eos_token_id = self.tokenizer.eos_token_id 
@@ -356,7 +395,7 @@ if __name__ == '__main__':
         # align_state = torch.load(ckpt_dir / "align_model.bin", map_location="cpu")
         # align_model.load_state_dict(align_state)
         align_model.cuda()
-        model = DrKGC_align(tokenizer, model, embed_model, align_model, args.lm_loss, args.kge_loss, args.struct_loss, args.align_loss)
+        model = DrKGC_align(tokenizer, model, embed_model, align_model, args.lm_loss, args.kge_loss, args.struct_loss, args.align_loss, args.tau)
     else:
         model = DrKGC(tokenizer, model, embed_model)
     if hasattr(model, 'llm_model'):
@@ -370,25 +409,38 @@ if __name__ == '__main__':
     data_module = DataModule(args, tokenizer)
 
     evaluator = Evaluator(args, tokenizer, model, data_module, generation_config)
+    
+    #🌟 [신규 추가] LLM Confidence만 계산하여 캐시로 저장하는 로직
+    if args.use_align and args.llm_confidence:
+        os.makedirs(args.exp_output_dir, exist_ok=True)
+        dataset_name_prefix = os.path.basename(args.dataset_path)[:2]
+        cache_file_name = f"{dataset_name_prefix}_{args.kge_model_name}_logits_merged.pt"
+        with autocast():
+            evaluator.save_llm_confidence(data_module.test_ds, cache_file_name)
 
-    with autocast():
-        preds = evaluator.ranking_metrics(data_module.test_ds)
-    output = {
-        'args': vars(args),
-        'generation_config': vars(generation_config),
-        'prediction': preds,
-    }
-    if args.use_align:
-        alpha_val = getattr(args, 'alpha', -1.0)
-        beta_val = getattr(args, 'beta', 0.0)
-        if alpha_val in [0.0, 1.0]:
-            file_suffix = f"_a{alpha_val}"
-        else:
-            file_suffix = f"_b{beta_val}"
-        output_path = os.path.join(os.path.dirname(args.checkpoint_dir), f'prediction{file_suffix}.json')
-        json.dump(output, open(output_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
-    else:
-        output_path = os.path.join(os.path.dirname(args.checkpoint_dir), f'prediction.json')
-        json.dump(output, open(output_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
+    # #=== [기존 평가 및 저장 코드 주석 처리 시작] ===
+    # with autocast():
+    #     preds = evaluator.ranking_metrics(data_module.test_ds)
+    # output = {
+    #     'args': vars(args),
+    #     'generation_config': vars(generation_config),
+    #     'prediction': preds,
+    # }
+    # if args.use_align:
+    #     alpha_val = getattr(args, 'alpha', -1.0)
+    #     beta_val = getattr(args, 'beta', 0.0)
+    #     if alpha_val in [0.0, 1.0]:
+    #         file_suffix = f"_a{alpha_val}"
+    #     else:
+    #         file_suffix = f"_b{beta_val}"
+    #     if args.llm_confidence:
+    #         output_path = os.path.join(args.exp_output_dir, f'prediction{file_suffix}.json')
+    #     else:
+    #         output_path = os.path.join(os.path.dirname(args.checkpoint_dir), f'prediction{file_suffix}.json')
+    #     #json.dump(output, open(output_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
+    # else:
+    #     output_path = os.path.join(os.path.dirname(args.checkpoint_dir), f'prediction.json')
+    #     #json.dump(output, open(output_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
+    
     if args.use_wandb:
         wandb.finish()

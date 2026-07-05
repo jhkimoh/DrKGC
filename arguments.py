@@ -48,6 +48,8 @@ class Arguments:
     peft_model_path: str = field(default=None) ## llm freeze 할때 사용하는 미리 validation dataset으로 peft 한 llm path 
     use_d_r: bool = field(default=False)
     llm_confidence: bool = field(default=False) ## infer.py에서 llm confidence 방식 사용 여부 
+    exp_output_dir: str = field(default=None) ## llm_confidence True 일때 사용하는 output 저장 dir 
+    tau: float = field(default=1.0) ## llm confidence 에서 softmax(logit/tau) 해줄거임 
 
 @dataclass
 class FinetuningArguments(Seq2SeqTrainingArguments):

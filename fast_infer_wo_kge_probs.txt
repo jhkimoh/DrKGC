@@ -1,0 +1,7 @@
+🚀 [Auto Run Mode] 모든 데이터셋과 KGE 모델 조합에 대해 실험을 자동 시작합니다!
+
+======================================================================
+▶️ 실행 중: Dataset = WN18RR | KGE = TransE
+▶️ 명령어: python fast_infer.py --data_path KG_data/wn18rr --test_json_path dataset/wn18rr/test.json --kge_checkpoint TransE_wn18rr_0/checkpoint --logits_path results/wn18rr/llama3_seed1213_TransE_kgt5/wn_TransE_logits.pt --kge_model_name TransE --score_strategy modify_query --gamma 6.0
+======================================================================
+

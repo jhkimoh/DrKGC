@@ -232,13 +232,14 @@ class DrKGC_enhanced(DrKGC):
         )
 
 class DrKGC_align(DrKGC):
-    def __init__(self, tokenizer, llm_model, graph_model, align_model, lm_loss, kge_loss, struct_loss, align_loss):
+    def __init__(self, tokenizer, llm_model, graph_model, align_model, lm_loss, kge_loss, struct_loss, align_loss, tau):
         super().__init__(tokenizer, llm_model, graph_model)
         self.align_model = align_model
         self.lm_loss = lm_loss
         self.kge_loss = kge_loss
         self.struct_loss = struct_loss
         self.align_loss = align_loss
+        self.tau = tau
 
     def forward(self, input_ids, attention_mask, labels, query_ids, entity_ids, subgraph, triple_ids, is_predicted_tail, extract_positions, triplet_ids, topk_ids):
         #breakpoint()
@@ -317,6 +318,9 @@ class DrKGC_align(DrKGC):
         last_hidden_state = last_hidden_states[:, -1, :] # [1, 4096]
         # 우선 train부터 완료하고 돌아와서 다시
         #breakpoint()
+        if llm_conf_probs is not None:
+            llm_conf_probs = llm_conf_probs / self.tau
+            llm_conf_probs = F.softmax(llm_conf_probs, dim=0) 
         scores = self.align_model(last_hidden_state, triplet_ids, topk_ids, is_predicted_tail, True, llm_conf_probs=llm_conf_probs)
         return scores # [1,40943]
         #if generation_config is None:
@@ -359,5 +363,6 @@ class DrKGC_align(DrKGC):
                 cand_score = -float('inf')
             scores.append(cand_score)
         scores_tensor = torch.tensor(scores, device=input_ids.device) # KGT5의 방식을 사용하면, 각 candidate에 대한 LLM의 confidence값을 구할 수 있음. LLM(c)
-        probs = F.softmax(scores_tensor, dim=0) # softmax 해주기 # 주어진 confidence를 softmax하면 각 candidate에 대한 가중치를 표준화하여 나타낼 수 있음.
-        return probs
+        return scores_tensor 
+        #probs = F.softmax(scores_tensor, dim=0) # softmax 해주기 # 주어진 confidence를 softmax하면 각 candidate에 대한 가중치를 표준화하여 나타낼 수 있음.
+        #return probs

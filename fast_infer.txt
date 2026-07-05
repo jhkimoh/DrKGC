@@ -1,0 +1,85 @@
+🚀 [Auto Run Mode] 모든 데이터셋과 KGE 모델 조합에 대해 실험을 자동 시작합니다!
+
+======================================================================
+▶️ 실행 중: Dataset = WN18RR | KGE = TransE
+▶️ 명령어: python fast_infer.py --data_path KG_data/wn18rr --test_json_path dataset/wn18rr/test.json --kge_checkpoint TransE_wn18rr_0/checkpoint --logits_path results/wn18rr/llama3_seed1213_TransE_kgt5/wn_TransE_logits.pt --kge_model_name TransE --score_strategy modify_query --gamma 6.0
+======================================================================
+
+
+[modify_query | Alpha=0.0, Beta=0.0, Tau=1.0]
+{'mrr': 0.22352115, 'mr': 3354.68538609, 'hits1': 0.01324186, 'hits3': 0.40140396, 'hits10': 0.5303127}
+
+[modify_query | Alpha=-1.0, Beta=0.001, Tau=1.0]
+{'mrr': 0.18659469, 'mr': 7375.43474793, 'hits1': 0.03382259, 'hits3': 0.31126356, 'hits10': 0.41624123}
+
+[modify_query | Alpha=-1.0, Beta=0.01, Tau=1.0]
+{'mrr': 0.18758533, 'mr': 7014.43905552, 'hits1': 0.03366305, 'hits3': 0.31333759, 'hits10': 0.41831525}
+
+[modify_query | Alpha=-1.0, Beta=0.05, Tau=1.0]
+{'mrr': 0.19206361, 'mr': 5392.97096362, 'hits1': 0.03254627, 'hits3': 0.3232291, 'hits10': 0.42916401}
+
+[modify_query | Alpha=-1.0, Beta=0.1, Tau=1.0]
+{'mrr': 0.19657503, 'mr': 4004.005903, 'hits1': 0.02935546, 'hits3': 0.33631142, 'hits10': 0.44208679}
+
+======================================================================
+▶️ 실행 중: Dataset = WN18RR | KGE = RotatE
+▶️ 명령어: python fast_infer.py --data_path KG_data/wn18rr --test_json_path dataset/wn18rr/test.json --kge_checkpoint RotatE/checkpoints/RotatE_wn18rr_0/checkpoint --logits_path results/wn18rr/llama3_seed1213_RotatE_kgt5/wn_RotatE_logits.pt --kge_model_name RotatE --score_strategy modify_query --gamma 6.0
+======================================================================
+
+
+[modify_query | Alpha=0.0, Beta=0.0, Tau=1.0]
+{'mrr': 0.47593855, 'mr': 3363.1582642, 'hits1': 0.4275686, 'hits3': 0.49377792, 'hits10': 0.57195278}
+
+[modify_query | Alpha=-1.0, Beta=0.001, Tau=1.0]
+{'mrr': 0.44149564, 'mr': 7695.494097, 'hits1': 0.42980217, 'hits3': 0.44033184, 'hits10': 0.46155073}
+
+[modify_query | Alpha=-1.0, Beta=0.01, Tau=1.0]
+{'mrr': 0.44313933, 'mr': 7355.93379068, 'hits1': 0.43139757, 'hits3': 0.44224633, 'hits10': 0.46314614}
+
+[modify_query | Alpha=-1.0, Beta=0.05, Tau=1.0]
+{'mrr': 0.44881538, 'mr': 5765.94128909, 'hits1': 0.43586471, 'hits3': 0.44830887, 'hits10': 0.46936822}
+
+[modify_query | Alpha=-1.0, Beta=0.1, Tau=1.0]
+{'mrr': 0.45607381, 'mr': 4209.81030632, 'hits1': 0.43889598, 'hits3': 0.4578813, 'hits10': 0.48436503}
+
+======================================================================
+▶️ 실행 중: Dataset = FB15K237 | KGE = TransE
+▶️ 명령어: python fast_infer.py --data_path KG_data/fb15k-237 --test_json_path dataset/fb15k237/test.json --kge_checkpoint TransE_FB15k-237_0/checkpoint --logits_path results/fb15k237/llama3_seed1213_TransE_kgt5/fb_TransE_logits.pt --kge_model_name TransE --score_strategy modify_query --gamma 9.0
+======================================================================
+
+
+[modify_query | Alpha=0.0, Beta=0.0, Tau=1.0]
+{'mrr': 0.32970842, 'mr': 173.07219291, 'hits1': 0.2306264, 'hits3': 0.36863579, 'hits10': 0.52848627}
+
+[modify_query | Alpha=-1.0, Beta=0.001, Tau=1.0]
+{'mrr': 0.19157419, 'mr': 4425.25613212, 'hits1': 0.16688654, 'hits3': 0.19239226, 'hits10': 0.2347552}
+
+[modify_query | Alpha=-1.0, Beta=0.01, Tau=1.0]
+{'mrr': 0.19490918, 'mr': 4052.15059122, 'hits1': 0.16967165, 'hits3': 0.19559269, 'hits10': 0.23944591}
+
+[modify_query | Alpha=-1.0, Beta=0.05, Tau=1.0]
+{'mrr': 0.21090289, 'mr': 1593.56635395, 'hits1': 0.18279097, 'hits3': 0.21120395, 'hits10': 0.26013877}
+
+[modify_query | Alpha=-1.0, Beta=0.1, Tau=1.0]
+{'mrr': 0.23739942, 'mr': 489.34840711, 'hits1': 0.20363041, 'hits3': 0.23925046, 'hits10': 0.29539236}
+
+======================================================================
+▶️ 실행 중: Dataset = FB15K237 | KGE = RotatE
+▶️ 명령어: python fast_infer.py --data_path KG_data/fb15k-237 --test_json_path dataset/fb15k237/test.json --kge_checkpoint RotatE/checkpoints/RotatE_FB15k-237_0/checkpoint --logits_path results/fb15k237/llama3_seed1213_RotatE_kgt5/fb_RotatE_logits.pt --kge_model_name RotatE --score_strategy modify_query --gamma 9.0
+======================================================================
+
+
+[modify_query | Alpha=0.0, Beta=0.0, Tau=1.0]
+{'mrr': 0.33648341, 'mr': 177.7985195, 'hits1': 0.23934819, 'hits3': 0.37374182, 'hits10': 0.53019642}
+
+[modify_query | Alpha=-1.0, Beta=0.001, Tau=1.0]
+{'mrr': 0.19788279, 'mr': 4802.24227988, 'hits1': 0.17951725, 'hits3': 0.19292974, 'hits10': 0.23084628}
+
+[modify_query | Alpha=-1.0, Beta=0.01, Tau=1.0]
+{'mrr': 0.20096177, 'mr': 4536.26021206, 'hits1': 0.18222906, 'hits3': 0.19622789, 'hits10': 0.23473077}
+
+[modify_query | Alpha=-1.0, Beta=0.05, Tau=1.0]
+{'mrr': 0.2176874, 'mr': 2283.43200919, 'hits1': 0.19752272, 'hits3': 0.21271866, 'hits10': 0.25407994}
+
+[modify_query | Alpha=-1.0, Beta=0.1, Tau=1.0]
+{'mrr': 0.24589696, 'mr': 562.3928711, 'hits1': 0.22095182, 'hits3': 0.24196228, 'hits10': 0.28825858}
