@@ -1,0 +1,67 @@
+🚀 [Auto Run Mode] 모든 데이터셋과 KGE 모델 조합에 대해 실험을 자동 시작합니다!
+▶️ [병렬 실행 출발] Dataset = WN18RR | KGE = TransE
+▶️ [병렬 실행 출발] Dataset = WN18RR | KGE = RotatE
+▶️ [병렬 실행 출발] Dataset = FB15K237 | KGE = TransE
+▶️ [병렬 실행 출발] Dataset = FB15K237 | KGE = RotatE
+
+[2026-07-08 01:36:24.678479 KG_data/wn18rr, TransE, candidate_order_kge | Alpha=0.0, Beta=0.0, Tau=1.0] 
+ {'mrr': 0.45841788, 'mr': 3348.47941927, 'hits1': 0.38640715, 'hits3': 0.50287173, 'hits10': 0.58008934}
+
+[2026-07-08 01:37:56.345409 KG_data/wn18rr, TransE, candidate_order_kge | Alpha=-1.0, Beta=0.001, Tau=1.0] 
+ {'mrr': 0.45841788, 'mr': 3348.47941927, 'hits1': 0.38640715, 'hits3': 0.50287173, 'hits10': 0.58008934}
+
+[2026-07-08 01:39:34.895738 KG_data/wn18rr, TransE, candidate_order_kge | Alpha=-1.0, Beta=0.01, Tau=1.0] 
+ {'mrr': 0.45841788, 'mr': 3348.47941927, 'hits1': 0.38640715, 'hits3': 0.50287173, 'hits10': 0.58008934}
+
+[2026-07-08 01:41:13.677653 KG_data/wn18rr, TransE, candidate_order_kge | Alpha=-1.0, Beta=0.05, Tau=1.0] 
+ {'mrr': 0.45841788, 'mr': 3348.47941927, 'hits1': 0.38640715, 'hits3': 0.50287173, 'hits10': 0.58008934}
+
+[2026-07-08 01:42:52.314974 KG_data/wn18rr, TransE, candidate_order_kge | Alpha=-1.0, Beta=0.1, Tau=1.0] 
+ {'mrr': 0.45841788, 'mr': 3348.47941927, 'hits1': 0.38640715, 'hits3': 0.50287173, 'hits10': 0.58008934}
+
+[2026-07-08 01:36:25.043386 KG_data/wn18rr, RotatE, candidate_order_kge | Alpha=0.0, Beta=0.0, Tau=1.0] 
+ {'mrr': 0.45884983, 'mr': 3363.07610083, 'hits1': 0.38640715, 'hits3': 0.50287173, 'hits10': 0.58008934}
+
+[2026-07-08 01:37:56.917347 KG_data/wn18rr, RotatE, candidate_order_kge | Alpha=-1.0, Beta=0.001, Tau=1.0] 
+ {'mrr': 0.45884983, 'mr': 3363.07610083, 'hits1': 0.38640715, 'hits3': 0.50287173, 'hits10': 0.58008934}
+
+[2026-07-08 01:39:35.461046 KG_data/wn18rr, RotatE, candidate_order_kge | Alpha=-1.0, Beta=0.01, Tau=1.0] 
+ {'mrr': 0.45884983, 'mr': 3363.07610083, 'hits1': 0.38640715, 'hits3': 0.50287173, 'hits10': 0.58008934}
+
+[2026-07-08 01:41:14.260096 KG_data/wn18rr, RotatE, candidate_order_kge | Alpha=-1.0, Beta=0.05, Tau=1.0] 
+ {'mrr': 0.45884983, 'mr': 3363.07610083, 'hits1': 0.38640715, 'hits3': 0.50287173, 'hits10': 0.58008934}
+
+[2026-07-08 01:42:52.682757 KG_data/wn18rr, RotatE, candidate_order_kge | Alpha=-1.0, Beta=0.1, Tau=1.0] 
+ {'mrr': 0.45884983, 'mr': 3363.07610083, 'hits1': 0.38640715, 'hits3': 0.50287173, 'hits10': 0.58008934}
+
+[2026-07-08 01:49:20.284977 KG_data/fb15k-237, TransE, candidate_order_kge | Alpha=0.0, Beta=0.0, Tau=1.0] 
+ {'mrr': 0.37227518, 'mr': 172.64805043, 'hits1': 0.2902619, 'hits3': 0.40230138, 'hits10': 0.5332747}
+
+[2026-07-08 02:00:54.332808 KG_data/fb15k-237, TransE, candidate_order_kge | Alpha=-1.0, Beta=0.001, Tau=1.0] 
+ {'mrr': 0.37227518, 'mr': 172.64805043, 'hits1': 0.2902619, 'hits3': 0.40230138, 'hits10': 0.5332747}
+
+[2026-07-08 02:12:30.688574 KG_data/fb15k-237, TransE, candidate_order_kge | Alpha=-1.0, Beta=0.01, Tau=1.0] 
+ {'mrr': 0.37227518, 'mr': 172.64805043, 'hits1': 0.2902619, 'hits3': 0.40230138, 'hits10': 0.5332747}
+
+[2026-07-08 02:24:07.145720 KG_data/fb15k-237, TransE, candidate_order_kge | Alpha=-1.0, Beta=0.05, Tau=1.0] 
+ {'mrr': 0.37227518, 'mr': 172.64805043, 'hits1': 0.2902619, 'hits3': 0.40230138, 'hits10': 0.5332747}
+
+[2026-07-08 02:35:44.922404 KG_data/fb15k-237, TransE, candidate_order_kge | Alpha=-1.0, Beta=0.1, Tau=1.0] 
+ {'mrr': 0.37227518, 'mr': 172.64805043, 'hits1': 0.2902619, 'hits3': 0.40230138, 'hits10': 0.5332747}
+
+[2026-07-08 01:49:33.904036 KG_data/fb15k-237, RotatE, candidate_order_kge | Alpha=0.0, Beta=0.0, Tau=1.0] 
+ {'mrr': 0.37229693, 'mr': 177.60664028, 'hits1': 0.2902619, 'hits3': 0.40230138, 'hits10': 0.5332747}
+
+[2026-07-08 02:01:24.560916 KG_data/fb15k-237, RotatE, candidate_order_kge | Alpha=-1.0, Beta=0.001, Tau=1.0] 
+ {'mrr': 0.37229693, 'mr': 177.60664028, 'hits1': 0.2902619, 'hits3': 0.40230138, 'hits10': 0.5332747}
+
+[2026-07-08 02:13:07.591757 KG_data/fb15k-237, RotatE, candidate_order_kge | Alpha=-1.0, Beta=0.01, Tau=1.0] 
+ {'mrr': 0.37229693, 'mr': 177.60664028, 'hits1': 0.2902619, 'hits3': 0.40230138, 'hits10': 0.5332747}
+
+[2026-07-08 02:24:52.443633 KG_data/fb15k-237, RotatE, candidate_order_kge | Alpha=-1.0, Beta=0.05, Tau=1.0] 
+ {'mrr': 0.37229693, 'mr': 177.60664028, 'hits1': 0.2902619, 'hits3': 0.40230138, 'hits10': 0.5332747}
+
+[2026-07-08 02:36:35.154347 KG_data/fb15k-237, RotatE, candidate_order_kge | Alpha=-1.0, Beta=0.1, Tau=1.0] 
+ {'mrr': 0.37229693, 'mr': 177.60664028, 'hits1': 0.2902619, 'hits3': 0.40230138, 'hits10': 0.5332747}
+
+🎉 모든 병렬 자동화 실험이 성공적으로 완료되었습니다!

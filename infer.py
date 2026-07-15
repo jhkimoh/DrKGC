@@ -414,7 +414,7 @@ if __name__ == '__main__':
     if args.use_align and args.llm_confidence:
         os.makedirs(args.exp_output_dir, exist_ok=True)
         dataset_name_prefix = os.path.basename(args.dataset_path)[:2]
-        cache_file_name = f"{dataset_name_prefix}_{args.kge_model_name}_logits_merged.pt"
+        cache_file_name = f"{dataset_name_prefix}_{args.kge_model_name}_logits.pt"
         with autocast():
             evaluator.save_llm_confidence(data_module.test_ds, cache_file_name)
 

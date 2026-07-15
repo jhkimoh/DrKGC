@@ -9,6 +9,7 @@ import numpy as np
 from tqdm import tqdm
 import sys
 import subprocess
+from datetime import datetime 
 
 class Scorer:
     def __init__(self, args):
@@ -129,6 +130,68 @@ class Scorer:
         scores[entity_ids] = cand_scores
         return scores.unsqueeze(0)
 
+    # Chatgpt 사용
+    def _score_candidate_order_kge(self, triple_ids, entity_ids, llm_logits, is_predicted_tail, alpha, beta, tau):
+        """
+        Candidate는 LLM top-n entity라고 가정.
+        Candidate들은 LLM confidence 순서대로 top-n score를 부여하고,
+        나머지 entity들은 KGE score를 그대로 사용한다.
+
+        결과:
+        - candidate entity는 항상 non-candidate보다 높은 순위
+        - candidate 내부 순위는 llm_logits confidence 기준
+        - candidate 밖 entity 내부 순위는 KGE score 기준
+        """
+
+        h, r, t = triple_ids[:, 0], triple_ids[:, 1], triple_ids[:, 2]
+
+        entity_ids = entity_ids.view(-1).to(self.device)
+        llm_logits = llm_logits.view(-1).to(self.device)
+
+        if entity_ids.numel() != llm_logits.numel():
+            raise ValueError(
+                f"entity_ids 개수({entity_ids.numel()})와 llm_logits 개수({llm_logits.numel()})가 다릅니다."
+            )
+
+        # 1. 전체 entity에 대해 KGE score 계산
+        rel_emb = self.relation_embedding[r]
+        is_tail = (is_predicted_tail == 'tail')
+
+        fixed_ent_idx = h if is_tail else t
+        fixed_ent = self.entity_embedding[fixed_ent_idx]
+
+        target_point = self._get_target_point(fixed_ent, rel_emb, is_tail)
+
+        base_distances = self._calc_distance(
+            target_point.unsqueeze(1),
+            self.entity_embedding.unsqueeze(0)
+        )
+
+        scores = -base_distances.squeeze(0)
+
+        # 2. candidate 내부 순위는 LLM confidence 기준
+        # raw logits 기준으로 정렬해도 softmax와 순위는 동일함
+        sorted_pos = torch.argsort(llm_logits, descending=True)
+        sorted_entity_ids = entity_ids[sorted_pos]
+
+        # 3. candidate들이 항상 non-candidate보다 위에 오도록 score 부여
+        # KGE 최고점보다 candidate score를 더 크게 만든다.
+        max_kge_score = torch.max(scores)
+
+        n = sorted_entity_ids.numel()
+
+        # 예: n=5이면 candidate score는 max_kge+5, +4, +3, +2, +1
+        candidate_scores = max_kge_score + torch.arange(
+            n,
+            0,
+            -1,
+            device=self.device,
+            dtype=scores.dtype
+        )
+
+        scores[sorted_entity_ids] = candidate_scores
+
+        return scores.unsqueeze(0)
 class Evaluator:
     def __init__(self, args):
         self.args = args
@@ -216,8 +279,7 @@ class Evaluator:
             'mrr': metrics['MRR'], 'mr': metrics['MR'],
             'hits1': metrics['HITS@1'], 'hits3': metrics['HITS@3'], 'hits10': metrics['HITS@10']
         }
-        print(f"\n[{self.args.score_strategy} | Alpha={alpha}, Beta={beta}, Tau={tau}]")
-        print(metrics)
+        print(f"\n[{datetime.now()} {self.args.data_path}, {self.args.kge_model_name}, {self.args.score_strategy} | Alpha={alpha}, Beta={beta}, Tau={tau}] \n {metrics}")
         
         log_file_path = os.path.join(self.output_dir, f'metric_{self.args.kge_model_name}_a{alpha}_b{beta}_tau{tau}.txt')
         with open(log_file_path, 'w', encoding='utf-8') as log_file:
@@ -272,8 +334,9 @@ if __name__ == '__main__':
         
         datasets = ["wn18rr", "fb15k237"]
         kge_models = ["TransE", "RotatE"]
-        score_strategy = "modify_query" # 적용하고 싶은 방법론 이름
-        
+        #score_strategy = "modify_query" # 적용하고 싶은 방법론 이름
+        score_strategy = "candidate_order_kge" # 적용하고 싶은 방법론 이름
+        processes = []
         for dataset in datasets:
             for kge_model in kge_models:
                 
@@ -314,15 +377,17 @@ if __name__ == '__main__':
                 
                 # 리스트를 띄어쓰기로 연결하여 하나의 문자열 명령어로 만듦
                 cmd_str = " ".join(cmd)
-                
-                print(f"\n" + "="*70)
-                print(f"▶️ 실행 중: Dataset = {dataset.upper()} | KGE = {kge_model}")
-                print(f"▶️ 명령어: {cmd_str}")
-                print("="*70 + "\n")
-                
-                try:
-                    # subprocess를 통해 독립된 프로세스로 실행 (메모리 누수 원천 차단)
-                    subprocess.run(cmd_str, shell=True, check=True)
-                except subprocess.CalledProcessError as e:
-                    print(f"\n❌ [에러 발생] {dataset} - {kge_model} 실행 중 오류가 발생하여 다음 실험으로 넘어갑니다.")
-                    continue
+                print(f"▶️ [병렬 실행 출발] Dataset = {dataset.upper()} | KGE = {kge_model}")
+                p = subprocess.Popen(cmd_str, shell=True)
+                processes.append(p)
+            
+        for p in processes:
+            p.wait()
+            
+        print("\n🎉 모든 병렬 자동화 실험이 성공적으로 완료되었습니다!")
+                # try:
+                #     # subprocess를 통해 독립된 프로세스로 실행 (메모리 누수 원천 차단)
+                #     subprocess.run(cmd_str, shell=True, check=True)
+                # except subprocess.CalledProcessError as e:
+                #     print(f"\n❌ [에러 발생] {dataset} - {kge_model} 실행 중 오류가 발생하여 다음 실험으로 넘어갑니다.")
+                #     continue

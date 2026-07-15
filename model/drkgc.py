@@ -358,7 +358,7 @@ class DrKGC_align(DrKGC):
             cand_logits = log_probs[i, prompt_len-1: seq_len-1] # torch.Size([3, 128256])
             if len(cand_labels)>0:
                 cand_score = cand_logits[torch.arange(len(cand_labels)),cand_labels].sum().item()
-                #cand_score = cand_score / len(cand_labels)
+                cand_score = cand_score / len(cand_labels)
             else:
                 cand_score = -float('inf')
             scores.append(cand_score)

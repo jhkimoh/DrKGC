@@ -35,7 +35,7 @@ args = parser.parse_args()
 
 data_configs = {
     "wn18rr": {
-        "dataset_path": "dataset_merged/wn18rr",
+        "dataset_path": "dataset/wn18rr",
         "data_path": "KG_data/wn18rr",
         "kge_embedding_path": "RotatE/checkpoints/RotatE_wn18rr_0/checkpoint",
         "checkpoint_path": "TransE_wn18rr_0/checkpoint", # 이게 None이면 random emb으로 처음 align_model kg embedding 시작 
@@ -50,7 +50,7 @@ data_configs = {
         "checkpoint_dir": "results/wn18rr/llama3_seed1213_origin/checkpoint-final"
     },
     "fb15k237": {
-        "dataset_path": "dataset_merged/fb15k237",
+        "dataset_path": "dataset/fb15k237",
         "data_path": "KG_data/fb15k-237",
         "kge_embedding_path": "RotatE/checkpoints/RotatE_FB15k-237_0/checkpoint",
         "checkpoint_path": "TransE_FB15k-237_0/checkpoint",

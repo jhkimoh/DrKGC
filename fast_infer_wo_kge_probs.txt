@@ -1,7 +1,67 @@
 🚀 [Auto Run Mode] 모든 데이터셋과 KGE 모델 조합에 대해 실험을 자동 시작합니다!
+▶️ [병렬 실행 출발] Dataset = WN18RR | KGE = TransE
+▶️ [병렬 실행 출발] Dataset = WN18RR | KGE = RotatE
+▶️ [병렬 실행 출발] Dataset = FB15K237 | KGE = TransE
+▶️ [병렬 실행 출발] Dataset = FB15K237 | KGE = RotatE
 
-======================================================================
-▶️ 실행 중: Dataset = WN18RR | KGE = TransE
-▶️ 명령어: python fast_infer.py --data_path KG_data/wn18rr --test_json_path dataset/wn18rr/test.json --kge_checkpoint TransE_wn18rr_0/checkpoint --logits_path results/wn18rr/llama3_seed1213_TransE_kgt5/wn_TransE_logits.pt --kge_model_name TransE --score_strategy modify_query --gamma 6.0
-======================================================================
+[2026-07-05 08:44:50.487011 KG_data/wn18rr, TransE, modify_query | Alpha=0.0, Beta=0.0, Tau=1.0] 
+ {'mrr': 0.22352115, 'mr': 3354.68538609, 'hits1': 0.01324186, 'hits3': 0.40140396, 'hits10': 0.5303127}
 
+[2026-07-05 08:46:22.010753 KG_data/wn18rr, TransE, modify_query | Alpha=-1.0, Beta=0.001, Tau=1.0] 
+ {'mrr': 0.35808752, 'mr': 3352.8224314, 'hits1': 0.21569879, 'hits3': 0.47080408, 'hits10': 0.54913848}
+
+[2026-07-05 08:47:59.615159 KG_data/wn18rr, TransE, modify_query | Alpha=-1.0, Beta=0.01, Tau=1.0] 
+ {'mrr': 0.30285887, 'mr': 3352.98261008, 'hits1': 0.10545629, 'hits3': 0.47032546, 'hits10': 0.5488194}
+
+[2026-07-05 08:49:37.929874 KG_data/wn18rr, TransE, modify_query | Alpha=-1.0, Beta=0.05, Tau=1.0] 
+ {'mrr': 0.29712839, 'mr': 3353.16687939, 'hits1': 0.09572431, 'hits3': 0.47032546, 'hits10': 0.54690491}
+
+[2026-07-05 08:51:15.689426 KG_data/wn18rr, TransE, modify_query | Alpha=-1.0, Beta=0.1, Tau=1.0] 
+ {'mrr': 0.28601981, 'mr': 3353.32897256, 'hits1': 0.07705807, 'hits3': 0.46633695, 'hits10': 0.54610721}
+
+[2026-07-05 08:44:50.681447 KG_data/wn18rr, RotatE, modify_query | Alpha=0.0, Beta=0.0, Tau=1.0] 
+ {'mrr': 0.47593855, 'mr': 3363.1582642, 'hits1': 0.4275686, 'hits3': 0.49377792, 'hits10': 0.57195278}
+
+[2026-07-05 08:46:22.314498 KG_data/wn18rr, RotatE, modify_query | Alpha=-1.0, Beta=0.001, Tau=1.0] 
+ {'mrr': 0.49021414, 'mr': 3363.0378111, 'hits1': 0.44543714, 'hits3': 0.50813657, 'hits10': 0.57673899}
+
+[2026-07-05 08:47:59.850913 KG_data/wn18rr, RotatE, modify_query | Alpha=-1.0, Beta=0.01, Tau=1.0] 
+ {'mrr': 0.49028497, 'mr': 3363.03892789, 'hits1': 0.44559668, 'hits3': 0.50781749, 'hits10': 0.57641991}
+
+[2026-07-05 08:49:38.088710 KG_data/wn18rr, RotatE, modify_query | Alpha=-1.0, Beta=0.05, Tau=1.0] 
+ {'mrr': 0.49107394, 'mr': 3363.04148054, 'hits1': 0.44751117, 'hits3': 0.50717932, 'hits10': 0.57626037}
+
+[2026-07-05 08:51:15.920077 KG_data/wn18rr, RotatE, modify_query | Alpha=-1.0, Beta=0.1, Tau=1.0] 
+ {'mrr': 0.49078314, 'mr': 3363.04642629, 'hits1': 0.44735163, 'hits3': 0.50654116, 'hits10': 0.57610083}
+
+[2026-07-05 08:57:47.302687 KG_data/fb15k-237, TransE, modify_query | Alpha=0.0, Beta=0.0, Tau=1.0] 
+ {'mrr': 0.32970842, 'mr': 173.07219291, 'hits1': 0.2306264, 'hits3': 0.36863579, 'hits10': 0.52848627}
+
+[2026-07-05 09:09:22.665933 KG_data/fb15k-237, TransE, modify_query | Alpha=-1.0, Beta=0.001, Tau=1.0] 
+ {'mrr': 0.37845778, 'mr': 172.42785596, 'hits1': 0.29436627, 'hits3': 0.41048568, 'hits10': 0.54666276}
+
+[2026-07-05 09:20:55.786852 KG_data/fb15k-237, TransE, modify_query | Alpha=-1.0, Beta=0.01, Tau=1.0] 
+ {'mrr': 0.37822507, 'mr': 172.43279097, 'hits1': 0.29417082, 'hits3': 0.41048568, 'hits10': 0.54658947}
+
+[2026-07-05 09:32:32.475317 KG_data/fb15k-237, TransE, modify_query | Alpha=-1.0, Beta=0.05, Tau=1.0] 
+ {'mrr': 0.37712276, 'mr': 172.45512069, 'hits1': 0.29277827, 'hits3': 0.40980162, 'hits10': 0.5452702}
+
+[2026-07-05 09:44:10.500621 KG_data/fb15k-237, TransE, modify_query | Alpha=-1.0, Beta=0.1, Tau=1.0] 
+ {'mrr': 0.37470789, 'mr': 172.48179908, 'hits1': 0.28879605, 'hits3': 0.40831135, 'hits10': 0.54412196}
+
+[2026-07-05 08:57:52.646328 KG_data/fb15k-237, RotatE, modify_query | Alpha=0.0, Beta=0.0, Tau=1.0] 
+ {'mrr': 0.33648341, 'mr': 177.7985195, 'hits1': 0.23934819, 'hits3': 0.37374182, 'hits10': 0.53019642}
+
+[2026-07-05 09:09:33.421494 KG_data/fb15k-237, RotatE, modify_query | Alpha=-1.0, Beta=0.001, Tau=1.0] 
+ {'mrr': 0.37859409, 'mr': 177.4581501, 'hits1': 0.29514805, 'hits3': 0.40994821, 'hits10': 0.54529464}
+
+[2026-07-05 09:21:12.430053 KG_data/fb15k-237, RotatE, modify_query | Alpha=-1.0, Beta=0.01, Tau=1.0] 
+ {'mrr': 0.37859152, 'mr': 177.45998241, 'hits1': 0.29522134, 'hits3': 0.40953288, 'hits10': 0.5450259}
+
+[2026-07-05 09:32:53.169015 KG_data/fb15k-237, RotatE, modify_query | Alpha=-1.0, Beta=0.05, Tau=1.0] 
+ {'mrr': 0.37822552, 'mr': 177.47078081, 'hits1': 0.29544122, 'hits3': 0.40831135, 'hits10': 0.54443956}
+
+[2026-07-05 09:44:31.636324 KG_data/fb15k-237, RotatE, modify_query | Alpha=-1.0, Beta=0.1, Tau=1.0] 
+ {'mrr': 0.37700028, 'mr': 177.48495065, 'hits1': 0.29402424, 'hits3': 0.40655233, 'hits10': 0.54290042}
+
+🎉 모든 병렬 자동화 실험이 성공적으로 완료되었습니다!
