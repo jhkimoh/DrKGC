@@ -117,11 +117,18 @@ class Evaluator:
         self.model.eval()
         confidence_cache = {}
         for ex_idx, ex in enumerate(tqdm(dataset)):
+            h, r, t = ex['triplet_id']
+            pred_type = ex.get('type').split('_')[-1] # 'head' | 'tail'
+            query_id = h if pred_type=='tail' else t
+            subgraph = [ex['subgraph']] if 'subgraph' in ex else None
             llm_conf_probs = self.model.compute_llm_confidence( 
                 prompt=ex['input'], 
                 candidates=ex['rank_entities'], 
-                query_ids=torch.LongTensor([ex['query_entity_id']]).cuda(), 
-                entity_ids=torch.LongTensor([ex['rank_entities_id']]).cuda()
+                query_ids=torch.LongTensor([ex['query_entity_id']]).to(input_ids.device), 
+                entity_ids=torch.LongTensor([ex['rank_entities_id']]).to(input_ids.device), 
+                subgraph=subgraph, 
+                # query_ids=torch.LongTensor([query_id]).cuda(), 
+                # entity_ids=torch.LongTensor([ex['topk_id']]).cuda() 
             ) 
             h, r, t = ex['triplet_id']
             pred_type = ex.get('type').split('_')[-1] # 'head' | 'tail'
@@ -144,18 +151,19 @@ class Evaluator:
         for ex_idx, ex in enumerate(tqdm(dataset)):
             prompt = ex['input']
             llm_conf_probs = None
+            h, r, t = ex['triplet_id']
+            pred_type = ex.get('type').split('_')[-1] # 'head' | 'tail'
+            query_id = h if pred_type=='tail' else t
+            query_key = f"{ex_idx}_{h}_{r}_{t}_{pred_type}"
             if self.args.llm_confidence:
-                h, r, t = ex['triplet_id']
-                pred_type = ex.get('type').split('_')[-1] # 'head' | 'tail'
-                query_key = f"{ex_idx}_{h}_{r}_{t}_{pred_type}"
                 if self.llm_conf_probs is not None and query_key in self.llm_conf_probs:
                     llm_conf_probs = self.llm_conf_probs[query_key].cuda()
                 else:
                     llm_conf_probs = self.model.compute_llm_confidence( 
                         prompt=prompt, 
                         candidates=ex['rank_entities'], 
-                        query_ids=torch.LongTensor([ex['query_entity_id']]).cuda(), 
-                        entity_ids=torch.LongTensor([ex['rank_entities_id']]).cuda()
+                        query_ids=torch.LongTensor([query_id]).cuda(), #torch.LongTensor([ex['query_entity_id']]).cuda(), 
+                        entity_ids=torch.LongTensor([ex['topk_id']]).cuda()#torch.LongTensor([ex['rank_entities_id']]).cuda()
                     ) 
             inputs = self.tokenizer(prompt, return_tensors='pt')
             input_ids = inputs.input_ids.cuda() 
@@ -174,8 +182,8 @@ class Evaluator:
                 output = self.model.generate(
                     input_ids=input_ids, 
                     attention_mask=attention_mask,#
-                    query_ids=torch.LongTensor([ex['query_entity_id']]).to(input_ids.device), 
-                    entity_ids=torch.LongTensor([ex['rank_entities_id']]).to(input_ids.device), 
+                    query_ids=torch.LongTensor([query_id]).cuda(), #torch.LongTensor([ex['query_entity_id']]).to(input_ids.device), 
+                    entity_ids=torch.LongTensor([ex['topk_id']]).cuda(), #torch.LongTensor([ex['rank_entities_id']]).to(input_ids.device), 
                     triple_ids=triple_ids,#
                     is_predicted_tail=is_predicted_tail,#
                     subgraph=subgraph, 
@@ -400,8 +408,8 @@ if __name__ == '__main__':
         model = DrKGC(tokenizer, model, embed_model)
     if hasattr(model, 'llm_model'):
         model.llm_model = model.llm_model.half()
-    if hasattr(model, 'embed_model'):
-        model.embed_model = model.embed_model.half()
+    if hasattr(model, 'graph_model'):
+        model.graph_model = model.graph_model.half()
     #model = model.half()
     model.cuda()
     model.eval()
@@ -410,37 +418,37 @@ if __name__ == '__main__':
 
     evaluator = Evaluator(args, tokenizer, model, data_module, generation_config)
     
-    #🌟 [신규 추가] LLM Confidence만 계산하여 캐시로 저장하는 로직
-    if args.use_align and args.llm_confidence:
-        os.makedirs(args.exp_output_dir, exist_ok=True)
-        dataset_name_prefix = os.path.basename(args.dataset_path)[:2]
-        cache_file_name = f"{dataset_name_prefix}_{args.kge_model_name}_logits.pt"
-        with autocast():
-            evaluator.save_llm_confidence(data_module.test_ds, cache_file_name)
+    # # 🌟 [신규 추가] LLM Confidence만 계산하여 캐시로 저장하는 로직
+    # if args.use_align and args.llm_confidence:
+    #     os.makedirs(args.exp_output_dir, exist_ok=True)
+    #     dataset_name_prefix = os.path.basename(args.dataset_path)[:2]
+    #     cache_file_name = f"{dataset_name_prefix}_{args.kge_model_name}_logits.pt"
+    #     with autocast():
+    #         evaluator.save_llm_confidence(data_module.test_ds, cache_file_name)
 
-    # #=== [기존 평가 및 저장 코드 주석 처리 시작] ===
-    # with autocast():
-    #     preds = evaluator.ranking_metrics(data_module.test_ds)
-    # output = {
-    #     'args': vars(args),
-    #     'generation_config': vars(generation_config),
-    #     'prediction': preds,
-    # }
-    # if args.use_align:
-    #     alpha_val = getattr(args, 'alpha', -1.0)
-    #     beta_val = getattr(args, 'beta', 0.0)
-    #     if alpha_val in [0.0, 1.0]:
-    #         file_suffix = f"_a{alpha_val}"
-    #     else:
-    #         file_suffix = f"_b{beta_val}"
-    #     if args.llm_confidence:
-    #         output_path = os.path.join(args.exp_output_dir, f'prediction{file_suffix}.json')
-    #     else:
-    #         output_path = os.path.join(os.path.dirname(args.checkpoint_dir), f'prediction{file_suffix}.json')
-    #     #json.dump(output, open(output_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
-    # else:
-    #     output_path = os.path.join(os.path.dirname(args.checkpoint_dir), f'prediction.json')
-    #     #json.dump(output, open(output_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
+    #=== [기존 평가 및 저장 코드 주석 처리 시작] ===
+    with autocast():
+        preds = evaluator.ranking_metrics(data_module.test_ds)
+    output = {
+        'args': vars(args),
+        'generation_config': vars(generation_config),
+        'prediction': preds,
+    }
+    if args.use_align:
+        alpha_val = getattr(args, 'alpha', -1.0)
+        beta_val = getattr(args, 'beta', 0.0)
+        if alpha_val in [0.0, 1.0]:
+            file_suffix = f"_a{alpha_val}"
+        else:
+            file_suffix = f"_b{beta_val}"
+        if args.llm_confidence:
+            output_path = os.path.join(args.exp_output_dir, f'prediction{file_suffix}.json')
+        else:
+            output_path = os.path.join(os.path.dirname(args.checkpoint_dir), f'prediction{file_suffix}.json')
+        #json.dump(output, open(output_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
+    else:
+        output_path = os.path.join(os.path.dirname(args.checkpoint_dir), f'prediction.json')
+        json.dump(output, open(output_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
     
     if args.use_wandb:
         wandb.finish()

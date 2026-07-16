@@ -155,4 +155,3 @@ class GraphEnhancer(nn.Module):
         # entity_embeds = torch.cat(all_entity_embeds, dim=0)
         
         # return query_embeds, entity_embeds
-        

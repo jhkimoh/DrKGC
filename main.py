@@ -118,21 +118,13 @@ def get_accelerate_model(args, config, pretrained_model_class):
                     module = module.to(torch.bfloat16)
     return model
 
-        
-
 class SavePeftModelCallback(transformers.TrainerCallback):
     KEEP_FILES = {
         "adapter_model.bin",
         "adapter_config.json",
         "graph_model.bin",
-        "align_model.bin",       
-        "extract_model.bin",
-        "enhanced_model.bin",
         "README.md",
     }
-
-    def __init__(self, full_args):
-        self.full_args = full_args
 
     def on_save(self, args, state, control, **kwargs):
         if state.best_model_checkpoint is not None:
@@ -142,56 +134,94 @@ class SavePeftModelCallback(transformers.TrainerCallback):
             checkpoint_folder = os.path.join(args.output_dir, f"checkpoint-{state.global_step}")
             print(f"Saving checkpoint at step {state.global_step} to: {checkpoint_folder}")
 
-
-        os.makedirs(checkpoint_folder, exist_ok=True)
         peft_model_path = checkpoint_folder
-        model = kwargs["model"]
-        if not self.full_args.llm_freeze:
-            if hasattr(model, 'save_pretrained'):
-                model.save_pretrained(peft_model_path)
-        else:
-            print("❄️ LLM is frozen. Skipping base LLM weight saving to save storage space.")
-        #breakpoint()
-        
-        # 🌟 [핵심] 커스텀 모듈들 명시적 수동 저장
-        if hasattr(model, 'graph_model') and model.graph_model is not None:
-            torch.save(model.graph_model.state_dict(), os.path.join(checkpoint_folder, "graph_model.bin"))
-        if hasattr(model, 'align_model') and model.align_model is not None:
-            torch.save(model.align_model.state_dict(), os.path.join(checkpoint_folder, "align_model.bin"))
-        if hasattr(model, 'extract_model') and model.extract_model is not None:
-            torch.save(model.extract_model.state_dict(), os.path.join(checkpoint_folder, "extract_model.bin"))
-        if hasattr(model, 'enhanced_model') and model.enhanced_model is not None:
-            torch.save(model.enhanced_model.state_dict(), os.path.join(checkpoint_folder, "enhanced_model.bin"))
-            
+        kwargs["model"].save_pretrained(peft_model_path)
+
         # Comment out this code if need training status
-        if "checkpoint-final" not in checkpoint_folder:
-            for file_name in os.listdir(checkpoint_folder):
-                if file_name not in self.KEEP_FILES:
-                    os.remove(os.path.join(checkpoint_folder, file_name))
+        for file_name in os.listdir(checkpoint_folder):
+            if file_name not in self.KEEP_FILES:
+                os.remove(os.path.join(checkpoint_folder, file_name))
 
     def on_train_end(self, args, state, control, **kwargs):
         checkpoint_folder = os.path.join(args.output_dir, "checkpoint-final")
         print(f"Saving the final checkpoint to: {checkpoint_folder}")
-        os.makedirs(checkpoint_folder, exist_ok=True)
+
         peft_model_path = checkpoint_folder
-        # 2. LLM 가중치 저장 (Freeze 여부에 따라)
-        if not self.full_args.llm_freeze:
-            if hasattr(model, 'save_pretrained'):
-                model.save_pretrained(peft_model_path)
-        else:
-            print("❄️ Final Save: LLM is frozen. Skipping base LLM weight saving.")
+        kwargs["model"].save_pretrained(peft_model_path)
+       
+
+# class SavePeftModelCallback(transformers.TrainerCallback):
+#     KEEP_FILES = {
+#         "adapter_model.bin",
+#         "adapter_config.json",
+#         "graph_model.bin",
+#         "align_model.bin",       
+#         "extract_model.bin",
+#         "enhanced_model.bin",
+#         "README.md",
+#     }
+
+#     def __init__(self, full_args):
+#         self.full_args = full_args
+
+#     def on_save(self, args, state, control, **kwargs):
+#         if state.best_model_checkpoint is not None:
+#             checkpoint_folder = state.best_model_checkpoint
+#             print(f"Saving the best checkpoint to: {checkpoint_folder}")
+#         else:
+#             checkpoint_folder = os.path.join(args.output_dir, f"checkpoint-{state.global_step}")
+#             print(f"Saving checkpoint at step {state.global_step} to: {checkpoint_folder}")
+
+
+#         os.makedirs(checkpoint_folder, exist_ok=True)
+#         peft_model_path = checkpoint_folder
+#         model = kwargs["model"]
+#         if not self.full_args.llm_freeze:
+#             if hasattr(model, 'save_pretrained'):
+#                 model.save_pretrained(peft_model_path)
+#         else:
+#             print("❄️ LLM is frozen. Skipping base LLM weight saving to save storage space.")
+#         #breakpoint()
+        
+#         # 🌟 [핵심] 커스텀 모듈들 명시적 수동 저장
+#         if hasattr(model, 'graph_model') and model.graph_model is not None:
+#             torch.save(model.graph_model.state_dict(), os.path.join(checkpoint_folder, "graph_model.bin"))
+#         if hasattr(model, 'align_model') and model.align_model is not None:
+#             torch.save(model.align_model.state_dict(), os.path.join(checkpoint_folder, "align_model.bin"))
+#         if hasattr(model, 'extract_model') and model.extract_model is not None:
+#             torch.save(model.extract_model.state_dict(), os.path.join(checkpoint_folder, "extract_model.bin"))
+#         if hasattr(model, 'enhanced_model') and model.enhanced_model is not None:
+#             torch.save(model.enhanced_model.state_dict(), os.path.join(checkpoint_folder, "enhanced_model.bin"))
             
-        # 3. 🚨 누락되었던 커스텀 모듈(Align 등) 가중치 저장 로직 추가
-        if hasattr(model, 'graph_model') and model.graph_model is not None:
-            torch.save(model.graph_model.state_dict(), os.path.join(checkpoint_folder, "graph_model.bin"))
-        if hasattr(model, 'align_model') and model.align_model is not None:
-            torch.save(model.align_model.state_dict(), os.path.join(checkpoint_folder, "align_model.bin"))
-        if hasattr(model, 'extract_model') and model.extract_model is not None:
-            torch.save(model.extract_model.state_dict(), os.path.join(checkpoint_folder, "extract_model.bin"))
-        if hasattr(model, 'enhanced_model') and model.enhanced_model is not None:
-            torch.save(model.enhanced_model.state_dict(), os.path.join(checkpoint_folder, "enhanced_model.bin"))
+#         # Comment out this code if need training status
+#         if "checkpoint-final" not in checkpoint_folder:
+#             for file_name in os.listdir(checkpoint_folder):
+#                 if file_name not in self.KEEP_FILES:
+#                     os.remove(os.path.join(checkpoint_folder, file_name))
+
+#     def on_train_end(self, args, state, control, **kwargs):
+#         checkpoint_folder = os.path.join(args.output_dir, "checkpoint-final")
+#         print(f"Saving the final checkpoint to: {checkpoint_folder}")
+#         os.makedirs(checkpoint_folder, exist_ok=True)
+#         peft_model_path = checkpoint_folder
+#         # 2. LLM 가중치 저장 (Freeze 여부에 따라)
+#         if not self.full_args.llm_freeze:
+#             if hasattr(model, 'save_pretrained'):
+#                 model.save_pretrained(peft_model_path)
+#         else:
+#             print("❄️ Final Save: LLM is frozen. Skipping base LLM weight saving.")
             
-        print(f"✅ Final checkpoint successfully saved at {checkpoint_folder}")
+#         # 3. 🚨 누락되었던 커스텀 모듈(Align 등) 가중치 저장 로직 추가
+#         if hasattr(model, 'graph_model') and model.graph_model is not None:
+#             torch.save(model.graph_model.state_dict(), os.path.join(checkpoint_folder, "graph_model.bin"))
+#         if hasattr(model, 'align_model') and model.align_model is not None:
+#             torch.save(model.align_model.state_dict(), os.path.join(checkpoint_folder, "align_model.bin"))
+#         if hasattr(model, 'extract_model') and model.extract_model is not None:
+#             torch.save(model.extract_model.state_dict(), os.path.join(checkpoint_folder, "extract_model.bin"))
+#         if hasattr(model, 'enhanced_model') and model.enhanced_model is not None:
+#             torch.save(model.enhanced_model.state_dict(), os.path.join(checkpoint_folder, "enhanced_model.bin"))
+            
+#         print(f"✅ Final checkpoint successfully saved at {checkpoint_folder}")
 
 
 
@@ -221,7 +251,7 @@ def train():
     tokenizer = AutoTokenizer.from_pretrained(data_args.model_name_or_path, use_fast=False)
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.add_tokens(['[QUERY]', '[ENTITY]', '[RELATION]'])
-
+    #breakpoint()
     model_config = AutoConfig.from_pretrained(args.model_name_or_path)
     
     if args.model_type == "llama":
@@ -294,7 +324,8 @@ def train():
             **data_module,
         )
 
-    trainer.add_callback(SavePeftModelCallback(args))
+    trainer.add_callback(SavePeftModelCallback)
+    #trainer.add_callback(SavePeftModelCallback(args))
     
     # Training
     train_result = trainer.train()

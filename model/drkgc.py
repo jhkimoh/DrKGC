@@ -335,34 +335,53 @@ class DrKGC_align(DrKGC):
         #)
 
     @torch.no_grad()
-    def compute_llm_confidence(self, prompt, candidates, query_ids, entity_ids):
+    def compute_llm_confidence(self, prompt, candidates, query_ids, entity_ids, subgraph):
         batch_size = len(candidates)
         #breakpoint()
-        prompt = prompt.strip()
-        full_texts = [prompt + " " + cand + self.tokenizer.eos_token for cand in candidates]
-        inputs = self.tokenizer(full_texts, return_tensors="pt", padding=True)
-        input_ids = inputs.input_ids.cuda()
-        attention_masks = inputs.attention_mask.cuda()
         prompt_ids = [self.tokenizer.bos_token_id] + self.tokenizer.encode(prompt, add_special_tokens=False)
         prompt_len = len(prompt_ids)
-        b_query_ids = query_ids.repeat(batch_size) if query_ids.dim() == 1 else query_ids.repeat(batch_size, 1)
-        b_entity_ids = entity_ids.repeat(batch_size) if entity_ids.dim() == 1 else entity_ids.repeat(batch_size, 1)
-        inputs_embeds = self._replace_placeholders(input_ids, b_query_ids, b_entity_ids)
-        outputs = self.llm_model(inputs_embeds=inputs_embeds, attention_mask=attention_masks)
-        logits = outputs.logits # [20, seq_len, vocab_size]
-        log_probs = F.log_softmax(logits, dim=-1)
+        cand_ids_list = [self.tokenizer.encode(cand, add_special_tokens=False) for cand in candidates]
+        pad_id = self.tokenizer.pad_token_id if self.tokenizer.pad_token_id is not None else self.tokenizer.eos_token_id
+        eos_id = self.tokenizer.eos_token_id
         scores = []
-        for i in range(batch_size):
-            seq_len = attention_masks[i].sum().item()
-            cand_labels = input_ids[i, prompt_len: seq_len] # torch.Size([3])
-            cand_logits = log_probs[i, prompt_len-1: seq_len-1] # torch.Size([3, 128256])
-            if len(cand_labels)>0:
-                cand_score = cand_logits[torch.arange(len(cand_labels)),cand_labels].sum().item()
-                cand_score = cand_score / len(cand_labels)
-            else:
-                cand_score = -float('inf')
-            scores.append(cand_score)
-        scores_tensor = torch.tensor(scores, device=input_ids.device) # KGT5의 방식을 사용하면, 각 candidate에 대한 LLM의 confidence값을 구할 수 있음. LLM(c)
+        chunk_size = 4
+        for start_idx in range(0, batch_size, chunk_size):
+            end_idx = min(start_idx+chunk_size, batch_size)
+            chunk_cand_ids = cand_ids_list[start_idx:end_idx]
+            chunk_len = len(chunk_cand_ids)
+            input_ids_batch = []
+            attention_masks_batch = []
+            cand_lengths = []
+            max_seq_len = max([prompt_len+len(c)+1 for c in chunk_cand_ids])
+            for cand_ids in chunk_cand_ids:
+                c_len = len(cand_ids)
+                cand_lengths.append(c_len)
+                seq = prompt_ids + cand_ids + [eos_id]
+                seq_len = len(seq)
+                pad_len = max_seq_len - seq_len
+                padded_seq = seq + [pad_id] * pad_len
+                mask = [1] * seq_len + [0] * pad_len
+                input_ids_batch.append(padded_seq)
+                attention_masks_batch.append(mask)
+            input_ids = torch.tensor(input_ids_batch, dtype=torch.long).cuda()
+            attention_masks = torch.tensor(attention_masks_batch, dtype=torch.long).cuda()
+            b_query_ids = query_ids.repeat(chunk_len) if query_ids.dim() == 1 else query_ids.repeat(chunk_len, 1)
+            b_entity_ids = entity_ids.repeat(chunk_len) if entity_ids.dim() == 1 else entity_ids.repeat(chunk_len, 1)
+            inputs_embeds = self._replace_placeholders(input_ids, b_query_ids, b_entity_ids, subgraph)
+            outputs = self.llm_model(inputs_embeds=inputs_embeds, attention_mask=attention_masks)
+            logits = outputs.logits # [20, seq_len, vocab_size]
+            log_probs = F.log_softmax(logits, dim=-1)
+            
+            for i in range(chunk_len):
+                c_len = cand_lengths[i]
+                if c_len > 0:
+                    cand_labels = input_ids[i, prompt_len: prompt_len + c_len] # torch.Size([3])
+                    cand_logits = log_probs[i, prompt_len-1: prompt_len + c_len - 1] # torch.Size([3, 128256])
+                    cand_score = cand_logits[torch.arange(len(cand_labels)),cand_labels].sum().item()
+                    #cand_score = cand_score / c_len
+                else:
+                    cand_score = -float('inf')
+                scores.append(cand_score)
+            del outputs, logits, log_probs, inputs_embeds, input_ids, attention_masks ## OOM 해결 
+        scores_tensor = torch.tensor(scores, device=entity_ids.device) # KGT5의 방식을 사용하면, 각 candidate에 대한 LLM의 confidence값을 구할 수 있음. LLM(c)
         return scores_tensor 
-        #probs = F.softmax(scores_tensor, dim=0) # softmax 해주기 # 주어진 confidence를 softmax하면 각 candidate에 대한 가중치를 표준화하여 나타낼 수 있음.
-        #return probs

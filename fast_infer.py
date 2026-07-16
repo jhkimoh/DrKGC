@@ -10,6 +10,9 @@ from tqdm import tqdm
 import sys
 import subprocess
 from datetime import datetime 
+from transformers import AutoTokenizer, LlamaForCausalLM, GenerationConfig
+from peft import PeftModel
+from pathlib import Path 
 
 class Scorer:
     def __init__(self, args):
@@ -102,6 +105,13 @@ class Scorer:
         scores = -distances.squeeze(0)
         return scores
 
+    def _score_only_llm(self, triple_ids, entity_ids, llm_logits, is_predicted_tail, alpha, beta, tau):
+        llm_probs = F.softmax(llm_logits/tau, dim=0)
+        num_entities = self.entity_embedding.size(0)
+        scores = torch.full((num_entities,), float('-inf'), device=self.device)
+        scores[entity_ids] = llm_probs
+        return scores.unsqueeze(0)
+
     def _score_modify_query(self, triple_ids, entity_ids, llm_logits, is_predicted_tail, alpha, beta, tau):
         h, r, t = triple_ids[:,0], triple_ids[:,1], triple_ids[:,2]
         llm_probs = F.softmax(llm_logits/tau, dim=0)
@@ -192,6 +202,7 @@ class Scorer:
         scores[sorted_entity_ids] = candidate_scores
 
         return scores.unsqueeze(0)
+
 class Evaluator:
     def __init__(self, args):
         self.args = args
@@ -203,6 +214,29 @@ class Evaluator:
             self.dataset = json.load(f)
         self.llm_logits_cache = torch.load(args.logits_path, map_location=self.device)
         self.scorer = Scorer(self.args)
+        # 🌟 LLM 직접 로드 파트 추가
+        if self.args.use_llm:
+            from model import GraphEnhancer, DrKGC
+            print("\n⏳ [use_llm=True] 분석을 위해 실제 LLM 모델을 로드합니다. (시간 소요 및 VRAM 15GB+ 필요)")
+            self.tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=False)
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+            self.tokenizer.add_tokens(['[QUERY]', '[ENTITY]', '[RELATION]'])
+            model = LlamaForCausalLM.from_pretrained(args.model_name_or_path, low_cpu_mem_usage=True, device_map='auto')
+            model = PeftModel.from_pretrained(model, args.checkpoint_dir)
+            loaded_data = torch.load(args.kge_embedding_path, map_location='cpu')
+            if isinstance(loaded_data, dict) and 'model_state_dict' in loaded_data:
+                kge_embedding = loaded_data['model_state_dict']['entity_embedding']
+            else:
+                kge_embedding = loaded_data
+            llm_config = model.config
+            embed_model = GraphEnhancer(kge_embedding, kge_embedding.shape[1], 4, 128, 1, 1024, llm_config.hidden_size, llm_config.hidden_act)
+            ckpt_dir = Path(args.checkpoint_dir)  
+            state = torch.load(ckpt_dir / "graph_model.bin", map_location="cpu")
+            embed_model.load_state_dict(state)
+            self.model = DrKGC(self.tokenizer, model, embed_model)
+            self.model = self.model.half()
+            self.model.cuda()
+            self.model.eval()
 
     def _prepare_data(self):
         # all_true_triple 만들기... 
@@ -228,6 +262,95 @@ class Evaluator:
         for h, r, t in self.all_true_triples:
             self.hr2t[(h, r)].add(t)
             self.tr2h[(t, r)].add(h)
+
+    def compare_greedy_vs_global(self):
+        print("\n🔍 [분석] Global Score 1등 vs 실제 Greedy Decoding 예측 1등 비교 시작...")
+        match_count = 0
+        total_count = 0
+        
+        # 분석이 너무 오래 걸리면 [:500] 처럼 슬라이싱해서 테스트 가능합니다.
+        comparison_results = []
+        for ex_idx, ex in enumerate(tqdm(self.dataset)):
+            h, r, t = ex['triplet_id']
+            pred_type = ex.get('type').split('_')[-1]
+            query_key = f"{ex_idx}_{h}_{r}_{t}_{pred_type}"
+            
+            # 1. Global Score 기준 1등 찾기 (.pt 캐시 파일 활용)
+            llm_logits = self.llm_logits_cache[query_key]
+            candidate_strs = ex['rank_entities']
+            
+            best_cand_idx = torch.argmax(llm_logits).item()
+            best_global_str = candidate_strs[best_cand_idx].strip().lower()
+            
+            # 2. 실제 LLM Greedy Decoding 실행
+            prompt = ex['input']
+            inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+            subgraph = [ex['subgraph']] if 'subgraph' in ex else None
+            with torch.no_grad():
+                gen_config = GenerationConfig(
+                    max_new_tokens=10, 
+                    do_sample=False, 
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    bos_token_id=self.tokenizer.bos_token_id,
+                    return_dict_in_generate=False
+                )
+                outputs = self.model.generate(
+                    input_ids=inputs.input_ids, 
+                    query_ids=torch.LongTensor([ex['query_entity_id']]).to(self.device), 
+                    entity_ids=torch.LongTensor([ex['rank_entities_id']]).to(self.device), 
+                    subgraph=subgraph, 
+                    generation_config=gen_config
+                )
+            
+            # 생성된 텍스트 발라내기
+            generated_ids = outputs[0].cpu().numpy().tolist()
+            # 줄바꿈이 생길 수 있으니 첫 줄만 가져오기
+            greedy_str = self.tokenizer.decode(generated_ids, skip_special_tokens=True).split('\n')[0].strip().lower()
+            
+            # 3. 일치 여부 비교 (LLM이 살짝 길게 생성할 수 있으므로 in 활용)
+            is_match = best_global_str in greedy_str or greedy_str.startswith(best_global_str)
+            
+            if is_match:
+                match_count += 1
+            total_count += 1
+            
+            comparison_results.append({
+                "ex_idx": ex_idx,
+                "triplet_id": [h, r, t],
+                "pred_type": pred_type,
+                "target_entity": ex['output'],
+                "global_score_top1": best_global_str,
+                "greedy_decoding_top1": greedy_str,
+                "is_match": is_match
+            })
+
+            # 💡 초반 5개 샘플은 무조건 출력해서 눈으로 확인
+            if ex_idx < 5:
+                print(f"\n[Sample {ex_idx+1}]")
+                print(f" - 프롬프트 정답(Target): {self.kge_id2entity[t if pred_type=='tail' else h]}")
+                print(f" - 🥇 Global Score 1등: '{best_global_str}'")
+                print(f" - 🤖 Greedy 1등 생성: '{greedy_str}'")
+                print(f" - 일치 여부: {is_match}")
+                
+        match_rate = (match_count / total_count) * 100
+        print(f"\n✅ [비교 분석 완료] 총 {total_count}개 중 {match_count}개 일치 (일치율: {match_rate:.2f}%)")
+        save_filename = f'greedy_vs_global_analysis_{self.args.kge_model_name}.json'
+        save_path = os.path.join(self.output_dir, save_filename)
+        
+        output_data = {
+            "summary": {
+                "total_count": total_count,
+                "match_count": match_count,
+                "match_rate": round(match_rate, 2),
+                "kge_model": self.args.kge_model_name,
+            },
+            "details": comparison_results
+        }
+        
+        with open(save_path, 'w', encoding='utf-8') as f:
+            json.dump(output_data, f, ensure_ascii=False, indent=4)
+            
+        print(f"📁 상세 비교 분석 결과가 JSON으로 안전하게 저장되었습니다: {save_path}")
 
     def ranking_metrics(self, alpha_beta, tau):
         logs = []
@@ -311,24 +434,30 @@ def main():
     parser.add_argument("--gamma", type=float, default=9.0)
     parser.add_argument("--score_strategy", type=str, default="weighted_sum", 
                         help="적용할 점수 계산 전략 이름 (예: weighted_sum, modify_query)")
+    # 🌟 [수정 4] 누락된 Argument 추가
+    parser.add_argument("--use_llm", action="store_true", help="LLM을 로드하여 실제 Greedy Decoding과 비교")
+    parser.add_argument("--model_name_or_path", type=str, default="meta-llama/Meta-Llama-3-8B")
+    parser.add_argument("--checkpoint_dir", type=str, default=None, help="DrKGC Graph Enhancer 체크포인트")
+    parser.add_argument("--kge_embedding_path", type=str, default=None, help="사전학습된 KGE 임베딩 pt 파일")
 
     args = parser.parse_args()
     #breakpoint()
-    evaluator = Evaluator(args)
-
-    alpha_beta_list = [{"alpha": 0.0, "beta": 0.0}]
-    beta_list = [0.001, 0.01, 0.05, 0.1]
-    for beta in beta_list:
-        alpha_beta_list.append({"alpha": -1.0, "beta": beta})
-    #alpha_beta_list = [{"alpha": -1.0, "beta": 0.01}] ## for debugging 
-    tau_list = [1.0]
-    for alpha_beta in alpha_beta_list:
-        for tau in tau_list:
-            evaluator.ranking_metrics(alpha_beta, tau)
-
-if __name__ == '__main__':
+    
     if len(sys.argv) > 1:
-        main()
+        evaluator = Evaluator(args)
+        if args.use_llm:
+            breakpoint()
+            evaluator.compare_greedy_vs_global()
+            return
+        alpha_beta_list = [{"alpha": 0.0, "beta": 0.0}]
+        beta_list = [0.001, 0.01, 0.05, 0.1]
+        for beta in beta_list:
+            alpha_beta_list.append({"alpha": -1.0, "beta": beta})
+        alpha_beta_list = [{"alpha": 0.0, "beta": 0.0}] ## for debugging 
+        tau_list = [1.0]
+        for alpha_beta in alpha_beta_list:
+            for tau in tau_list:
+                evaluator.ranking_metrics(alpha_beta, tau)
     else:
         print("🚀 [Auto Run Mode] 모든 데이터셋과 KGE 모델 조합에 대해 실험을 자동 시작합니다!")
         
@@ -391,3 +520,8 @@ if __name__ == '__main__':
                 # except subprocess.CalledProcessError as e:
                 #     print(f"\n❌ [에러 발생] {dataset} - {kge_model} 실행 중 오류가 발생하여 다음 실험으로 넘어갑니다.")
                 #     continue
+    
+
+if __name__ == '__main__':
+    main()
+    
