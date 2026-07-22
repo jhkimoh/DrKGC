@@ -1,0 +1,18 @@
+/home/jovyan/irrlab/anaconda3/envs/DrKGC/lib/python3.12/site-packages/huggingface_hub/file_download.py:949: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+
+[2026-07-20 05:26:35.973900 KG_data/wn18rr, RotatE, modify_query | Alpha=0.0, Beta=0.0, Tau=1.0] 
+ {'mrr': 0.47604414, 'mr': 3363.16384812, 'hits1': 0.42772814, 'hits3': 0.49377792, 'hits10': 0.57195278}
+
+[2026-07-20 05:26:54.703362 KG_data/wn18rr, RotatE, modify_query | Alpha=-1.0, Beta=0.001, Tau=1.0] 
+ {'mrr': 0.66488074, 'mr': 1964.56668794, 'hits1': 0.61710274, 'hits3': 0.6944799, 'hits10': 0.74728781}
+
+[2026-07-20 05:27:13.551988 KG_data/wn18rr, RotatE, modify_query | Alpha=-1.0, Beta=0.01, Tau=1.0] 
+ {'mrr': 0.65921405, 'mr': 2014.49776643, 'hits1': 0.61215699, 'hits3': 0.68666241, 'hits10': 0.74218251}
+
+[2026-07-20 05:27:32.432161 KG_data/wn18rr, RotatE, modify_query | Alpha=-1.0, Beta=0.05, Tau=1.0] 
+ {'mrr': 0.63679483, 'mr': 2396.03206765, 'hits1': 0.5909381, 'hits3': 0.66400766, 'hits10': 0.72032546}
+
+[2026-07-20 05:27:51.344704 KG_data/wn18rr, RotatE, modify_query | Alpha=-1.0, Beta=0.1, Tau=1.0] 
+ {'mrr': 0.60112101, 'mr': 2623.31126356, 'hits1': 0.55328653, 'hits3': 0.62603701, 'hits10': 0.69144863}

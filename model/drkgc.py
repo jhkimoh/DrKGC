@@ -1,5 +1,6 @@
 from pathlib import Path
 import numpy as np
+import math
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -367,7 +368,9 @@ class DrKGC_align(DrKGC):
             attention_masks = torch.tensor(attention_masks_batch, dtype=torch.long).cuda()
             b_query_ids = query_ids.repeat(chunk_len) if query_ids.dim() == 1 else query_ids.repeat(chunk_len, 1)
             b_entity_ids = entity_ids.repeat(chunk_len) if entity_ids.dim() == 1 else entity_ids.repeat(chunk_len, 1)
-            inputs_embeds = self._replace_placeholders(input_ids, b_query_ids, b_entity_ids, subgraph)
+            b_subgraph = subgraph * chunk_len if subgraph is not None else None
+            #breakpoint()
+            inputs_embeds = self._replace_placeholders(input_ids, b_query_ids, b_entity_ids, b_subgraph)
             outputs = self.llm_model(inputs_embeds=inputs_embeds, attention_mask=attention_masks)
             logits = outputs.logits # [20, seq_len, vocab_size]
             log_probs = F.log_softmax(logits, dim=-1)
@@ -384,4 +387,128 @@ class DrKGC_align(DrKGC):
                 scores.append(cand_score)
             del outputs, logits, log_probs, inputs_embeds, input_ids, attention_masks ## OOM 해결 
         scores_tensor = torch.tensor(scores, device=entity_ids.device) # KGT5의 방식을 사용하면, 각 candidate에 대한 LLM의 confidence값을 구할 수 있음. LLM(c)
+        return scores_tensor 
+
+    @torch.no_grad()
+    def compute_llm_confidence_greedy(self, prompt, candidates, query_ids, entity_ids, subgraph):
+        batch_size = len(candidates)
+        #breakpoint()
+        prompt_ids = [self.tokenizer.bos_token_id] + self.tokenizer.encode(prompt, add_special_tokens=False)
+        prompt_len = len(prompt_ids)
+        cand_ids_list = [self.tokenizer.encode(cand, add_special_tokens=False) for cand in candidates]
+        pad_id = self.tokenizer.pad_token_id if self.tokenizer.pad_token_id is not None else self.tokenizer.eos_token_id
+        eos_id = self.tokenizer.eos_token_id
+        scores = []
+        all_cand_tokens = []
+        all_cand_probs = []
+        chunk_size = 4
+        for start_idx in range(0, batch_size, chunk_size):
+            end_idx = min(start_idx+chunk_size, batch_size)
+            chunk_cand_ids = cand_ids_list[start_idx:end_idx]
+            chunk_len = len(chunk_cand_ids)
+            input_ids_batch = []
+            attention_masks_batch = []
+            cand_lengths = []
+            max_seq_len = max([prompt_len+len(c)+1 for c in chunk_cand_ids])
+            for cand_ids in chunk_cand_ids:
+                c_len = len(cand_ids)
+                cand_lengths.append(c_len)
+                seq = prompt_ids + cand_ids + [eos_id]
+                seq_len = len(seq)
+                pad_len = max_seq_len - seq_len
+                padded_seq = seq + [pad_id] * pad_len
+                mask = [1] * seq_len + [0] * pad_len
+                input_ids_batch.append(padded_seq)
+                attention_masks_batch.append(mask)
+            input_ids = torch.tensor(input_ids_batch, dtype=torch.long).cuda()
+            attention_masks = torch.tensor(attention_masks_batch, dtype=torch.long).cuda()
+            b_query_ids = query_ids.repeat(chunk_len) if query_ids.dim() == 1 else query_ids.repeat(chunk_len, 1)
+            b_entity_ids = entity_ids.repeat(chunk_len) if entity_ids.dim() == 1 else entity_ids.repeat(chunk_len, 1)
+            b_subgraph = subgraph * chunk_len if subgraph is not None else None
+            #breakpoint()
+            inputs_embeds = self._replace_placeholders(input_ids, b_query_ids, b_entity_ids, b_subgraph)
+            outputs = self.llm_model(inputs_embeds=inputs_embeds, attention_mask=attention_masks)
+            logits = outputs.logits # [20, seq_len, vocab_size]
+            probs = F.softmax(logits, dim=-1)
+            
+            for i in range(chunk_len):
+                c_len = cand_lengths[i]
+                if c_len > 0:
+                    cand_labels = input_ids[i, prompt_len: prompt_len + c_len + 1] # torch.Size([3])
+                    cand_logits = probs[i, prompt_len-1: prompt_len + c_len ] # torch.Size([3, 128256])
+                    idx_gpu = torch.arange(len(cand_labels), device=cand_labels.device)
+                    token_probs = cand_logits[idx_gpu, cand_labels].tolist()
+                    all_cand_tokens.append(cand_labels.tolist())
+                    all_cand_probs.append(token_probs)
+                else:
+                    all_cand_tokens.append([])
+                    all_cand_probs.append([])
+            del outputs, logits, probs, inputs_embeds, input_ids, attention_masks ## OOM 해결 
+        num_cands = len(all_cand_tokens)
+        final_scores_dict = {i: 0.0 for i in range(num_cands)}
+        
+        def calculate_sub_cumulative(indices, depth):
+            # 현재 depth에 토큰이 남아있는 후보만 필터링
+            valid_indices = [i for i in indices if depth < len(all_cand_tokens[i])]
+            if not valid_indices: 
+                return {idx: 1.0 for idx in indices}
+                #return {idx: (step + 1) / (len(indices) + 1) for step, idx in enumerate(sorted(indices))} # 동일 텍스트 간의 동점(Tie)을 막기 위해 0.0 ~ 1.0 사이를 균등 분할하여 고유한 미세 점수(Offset) 부여
+            # 토큰 기준으로 그룹화
+            groups = {}
+            for i in valid_indices:
+                tok = all_cand_tokens[i][depth]
+                if tok not in groups:
+                    groups[tok] = []
+                groups[tok].append(i)
+                
+            # 확률 오름차순 정렬
+            group_list = []
+            for tok, idxs in groups.items():
+                prob = all_cand_probs[idxs[0]][depth]
+                group_list.append((prob, idxs))
+            group_list.sort(key=lambda x: x[0])
+
+            res = {i: 0.0 for i in indices}
+            smaller_sum = 0.0
+            for prob, idxs in group_list:
+                norm_prob = prob
+                if len(idxs) == 1:
+                    res[idxs[0]] = smaller_sum + norm_prob
+                else:
+                    sub_cum = calculate_sub_cumulative(idxs, depth + 1)
+                    for i in idxs:
+                        res[i] = smaller_sum + norm_prob * sub_cum[i]
+                smaller_sum += norm_prob
+                    
+            return res
+
+        # Depth 0 그룹화
+        groups_d0 = {}
+        for i in range(num_cands):
+            if len(all_cand_tokens[i]) > 0:
+                tok = all_cand_tokens[i][0]
+                if tok not in groups_d0:
+                    groups_d0[tok] = []
+                groups_d0[tok].append(i)
+                
+        group_list_d0 = []
+        for tok, idxs in groups_d0.items():
+            prob = all_cand_probs[idxs[0]][0]
+            group_list_d0.append((prob, idxs))
+        group_list_d0.sort(key=lambda x: x[0])
+        #breakpoint()
+        prev_prob = 0.0
+        for prob, idxs in group_list_d0:
+            if len(idxs) == 1: # 🚀 첫 번째 토큰이 유니크하면 재귀 안 타고 즉시 확정 (속도 향상 및 깔끔함)
+                final_scores_dict[idxs[0]] = prob
+            else: # 겹치는 토큰들만 서브 누적 확률 계산 태우기
+                sub_cum = calculate_sub_cumulative(idxs, 1)
+                for i in idxs:
+                    final_scores_dict[i] = prev_prob + sub_cum[i] * (prob - prev_prob)
+            prev_prob = prob
+
+        # 3. 외부 Scorer 연동용 Log 변환 및 반환
+        log_scores = [math.log(max(final_scores_dict.get(i, 0.0), 1e-300)) for i in range(num_cands)]
+        scores_tensor = torch.tensor(log_scores, dtype=torch.float32, device=entity_ids.device) 
+        
         return scores_tensor 

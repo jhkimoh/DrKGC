@@ -176,6 +176,83 @@ def analyze_sharpness(pt_file_path):
     print(f"   - 중앙값 (Median): {np.median(entropies):.4f}")
     print("-" * 60)
 
+def analyze_detailed_hits(file_path):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        
+    details = data['details']
+    total_samples = len(details)
+    
+    # 🌟 전체 데이터 통계용
+    total_global_correct = 0
+    total_greedy_correct = 0
+    
+    # 🌟 엇갈린 케이스(is_match == False) 분석용
+    diff_cases_count = 0
+    case_FF = 0  # (Global 틀림, Greedy 틀림)
+    case_TT = 0  # (Global 맞음, Greedy 맞음)
+    case_FT = 0  # (Global 틀림, Greedy 맞음)
+    case_TF = 0  # (Global 맞음, Greedy 틀림)
+    
+    for item in details:
+        target = str(item['target_entity'])
+        global_pred = str(item['global_score_top1'])
+        greedy_pred = str(item['greedy_decoding_top1'])
+        is_match = item['is_match']
+        
+        # [1] Global Score 정답 판별 (단어 완전 일치 기준)
+        global_is_correct = (target == global_pred)
+        
+        # [2] Greedy Decoding 정답 판별 (LLM이 살짝 길게 뱉을 수 있으므로 포함 여부 검사)
+        greedy_is_correct = (target == greedy_pred)
+        
+        # --- 전체 HITS@1 집계 ---
+        if global_is_correct:
+            total_global_correct += 1
+        if greedy_is_correct:
+            total_greedy_correct += 1
+            
+        # --- 엇갈린 케이스 분류 ---
+        if not is_match:
+            diff_cases_count += 1
+            
+            if not global_is_correct and not greedy_is_correct:
+                case_FF += 1
+            elif global_is_correct and greedy_is_correct:
+                case_TT += 1  # 두 텍스트는 다르지만, 정답 인정 조건(포함 등)에 의해 둘 다 맞은 경우
+            elif not global_is_correct and greedy_is_correct:
+                case_FT += 1
+            elif global_is_correct and not greedy_is_correct:
+                case_TF += 1
+                
+    # ==========================================
+    # 1. 전체 HITS@1 검증 출력
+    # ==========================================
+    print("\n" + "=" * 60)
+    print(f"📊 [전체 데이터 HITS@1 교차 검증] (총 {total_samples}개)")
+    print("=" * 60)
+    
+    global_hits1 = (total_global_correct / total_samples) * 100
+    greedy_hits1 = (total_greedy_correct / total_samples) * 100
+    
+    print(f"▶️ 전체 Global Score HITS@1    : {global_hits1:.2f}% ({total_global_correct}/{total_samples})")
+    print(f"▶️ 전체 Greedy Decoding HITS@1 : {greedy_hits1:.2f}% ({total_greedy_correct}/{total_samples})")
+    print("👉 (이 Global HITS@1 점수가 fast_infer.py에서 측정한 원래 결과와 거의 일치해야 정상입니다!)")
+    
+    # ==========================================
+    # 2. 엇갈린 케이스 4분할 분석 출력
+    # ==========================================
+    print("\n" + "=" * 60)
+    print(f"🔍 [엇갈린 케이스(is_match=False) {diff_cases_count}개 정밀 분석]")
+    print("=" * 60)
+    
+    print(f" 1. (틀, 틀) 둘 다 엉뚱한 답을 한 경우         : {case_FF} 개")
+    print(f" 2. (틀, 맞) Greedy(생성) 방식만 정답인 경우   : {case_FT} 개")
+    print(f" 3. (맞, 틀) Global(로짓합) 방식만 정답인 경우 : {case_TF} 개")
+    print(f" 4. (맞, 맞) 텍스트는 달라도 둘 다 정답 인정   : {case_TT} 개")
+    print("-" * 60)
+    
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate base KGE candidates.")
     parser.add_argument("--dataset_path", type=str, default=None, help="데이터셋 폴더 경로 (예: data/wn18rr)") # dataset/fb15k237
@@ -184,7 +261,10 @@ if __name__ == "__main__":
     parser.add_argument("--pt_path", type=str, default=None, help=".pt 파일 경로")
     
     args = parser.parse_args()
-    
+    #path = "results/wn18rr/llama3_seed1213_RotatE_kgt5/greedy_vs_global_analysis_RotatE.json"
+    #path = "results/fb15k237/llama3_seed1213_RotatE_kgt5/greedy_vs_global_analysis_RotatE.json"
+    path = "results/fb15k237/llama3/greedy_vs_global_analysis_RotatE.json"
+    analyze_detailed_hits(path)
     # 함수 실행
     if args.dataset_path is not None:
         result_dict = evaluate_base_candidates(args.dataset_path, args.type)
