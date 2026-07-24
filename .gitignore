@@ -26,3 +26,5 @@ DIFT-dataset/
 *_debug_log.json
 checkpoint*
 *.csv
+dataset_letter/
+results_letter/

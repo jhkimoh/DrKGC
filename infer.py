@@ -110,7 +110,7 @@ class Evaluator:
         return triples
 
     @torch.no_grad()
-    def save_llm_confidence_greedy(self, dataset, file_name):
+    def save_llm_confidence_letter(self, dataset, file_name):
         #breakpoint()
         if not self.args.llm_confidence:
             raise ValueError("self.args.llm_confidence is False!")
@@ -121,7 +121,7 @@ class Evaluator:
             pred_type = ex.get('type').split('_')[-1] # 'head' | 'tail'
             query_id = h if pred_type=='tail' else t
             subgraph = [ex['subgraph']] if 'subgraph' in ex else None
-            llm_conf_probs = self.model.compute_llm_confidence_greedy( 
+            llm_conf_probs = self.model.compute_llm_confidence_letter( 
                 prompt=ex['input'], 
                 candidates=ex['rank_entities'], 
                 query_ids=torch.LongTensor([ex['query_entity_id']]).cuda(), 
@@ -443,39 +443,39 @@ if __name__ == '__main__':
     data_module = DataModule(args, tokenizer)
 
     evaluator = Evaluator(args, tokenizer, model, data_module, generation_config)
-    
-    # 🌟 [신규 추가] LLM Confidence만 계산하여 캐시로 저장하는 로직
-    if args.use_align and args.llm_confidence:
-        os.makedirs(args.exp_output_dir, exist_ok=True)
-        dataset_name_prefix = os.path.basename(args.dataset_path)[:2]
-        cache_file_name = f"{dataset_name_prefix}_logits_w_gnn_greedy.pt"
+    if args.save_pt:
+        # 🌟 [신규 추가] LLM Confidence만 계산하여 캐시로 저장하는 로직
+        if args.use_align and args.llm_confidence:
+            os.makedirs(args.exp_output_dir, exist_ok=True)
+            dataset_name_prefix = os.path.basename(args.dataset_path)[:2]
+            cache_file_name = f"{dataset_name_prefix}_logits.pt"
+            with autocast():
+                evaluator.save_llm_confidence_letter(data_module.test_ds, cache_file_name)
+                #evaluator.save_llm_confidence(data_module.test_ds, cache_file_name)
+    else:
+        #=== [기존 평가 및 저장 코드 주석 처리 시작] ===
         with autocast():
-            evaluator.save_llm_confidence_greedy(data_module.test_ds, cache_file_name)
-            #evaluator.save_llm_confidence(data_module.test_ds, cache_file_name)
-
-    # #=== [기존 평가 및 저장 코드 주석 처리 시작] ===
-    # with autocast():
-    #     preds = evaluator.ranking_metrics(data_module.test_ds)
-    # output = {
-    #     'args': vars(args),
-    #     'generation_config': vars(generation_config),
-    #     'prediction': preds,
-    # }
-    # if args.use_align:
-    #     alpha_val = getattr(args, 'alpha', -1.0)
-    #     beta_val = getattr(args, 'beta', 0.0)
-    #     if alpha_val in [0.0, 1.0]:
-    #         file_suffix = f"_a{alpha_val}"
-    #     else:
-    #         file_suffix = f"_b{beta_val}"
-    #     if args.llm_confidence:
-    #         output_path = os.path.join(args.exp_output_dir, f'prediction{file_suffix}.json')
-    #     else:
-    #         output_path = os.path.join(os.path.dirname(args.checkpoint_dir), f'prediction{file_suffix}.json')
-    #     #json.dump(output, open(output_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
-    # else:
-    #     output_path = os.path.join(os.path.dirname(args.checkpoint_dir), f'prediction.json')
-    #     json.dump(output, open(output_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
-    
+            preds = evaluator.ranking_metrics(data_module.test_ds)
+        output = {
+            'args': vars(args),
+            'generation_config': vars(generation_config),
+            'prediction': preds,
+        }
+        if args.use_align:
+            alpha_val = getattr(args, 'alpha', -1.0)
+            beta_val = getattr(args, 'beta', 0.0)
+            if alpha_val in [0.0, 1.0]:
+                file_suffix = f"_a{alpha_val}"
+            else:
+                file_suffix = f"_b{beta_val}"
+            if args.llm_confidence:
+                output_path = os.path.join(args.exp_output_dir, f'prediction{file_suffix}.json')
+            else:
+                output_path = os.path.join(os.path.dirname(args.checkpoint_dir), f'prediction{file_suffix}.json')
+            #json.dump(output, open(output_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
+        else:
+            output_path = os.path.join(os.path.dirname(args.checkpoint_dir), f'prediction.json')
+            json.dump(output, open(output_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4, default=str)
+        
     if args.use_wandb:
         wandb.finish()

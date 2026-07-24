@@ -9,97 +9,132 @@ def load_predictions(filepath):
         return None
     with open(filepath, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    return data['prediction'] # 'prediction' 키 안의 리스트 반환
+    return data['prediction']
 
 def analyze_errors(baseline_path, extract_path, output_dir="error_analysis"):
-    """두 예측 결과를 비교하여 오답 분석을 수행합니다."""
+    original_preds = load_predictions(baseline_path)
+    letter_preds = load_predictions(extract_path)
     
-    baseline_preds = load_predictions(baseline_path)
-    extract_preds = load_predictions(extract_path)
-    
-    if baseline_preds is None or extract_preds is None:
+    if original_preds is None or letter_preds is None:
         return
 
-    # 결과를 저장할 디렉토리 생성
     os.makedirs(output_dir, exist_ok=True)
     
     results = {
-        "1_Common_Correct": [],       # 둘 다 맞춤 (공통 정답)
-        "2_Common_Wrong": [],         # 둘 다 틀림 (공통 오답)
-        "3_Only_DrKGC_Correct": [],   # 기존 모델만 맞춤 (Extract가 망친 문제)
-        "4_Only_Extract_Correct": [], # Extract만 맞춤 (새로 발굴한 정답)
+        "1_Common_Correct": [],       
+        "2_Common_Wrong": [],         
+        "3_Only_Original_Correct": [],
+        "4_Only_Letter_Correct": [],  
         "Summary": {}
     }
-    for i, (base_ex, ext_ex) in enumerate(zip(baseline_preds, extract_preds)):
-        # 정답 (Ground Truth)
-        target = base_ex['target']
+    
+    for i, (orig_ex, lett_ex) in enumerate(zip(original_preds, letter_preds)):
         
-        # 모델들의 1순위 예측값 (LLM Output)
-        base_pred = base_ex['pred']
-        ext_pred = ext_ex['pred']
+        # Original 비교: String Target vs String Pred
+        orig_target = str(orig_ex['target']).strip()
+        orig_pred = str(orig_ex['pred']).strip()
+        orig_is_correct = (orig_target == orig_pred)
         
-        # 맞췄는지 틀렸는지 판별 (Hits@1 기준: 완벽 일치)
-        base_is_correct = (target == base_pred)
-        ext_is_correct = (target == ext_pred)
+        # Letter 비교: Letter Target vs Letter Pred
+        lett_target = str(lett_ex['target']).strip()
+        lett_pred = str(lett_ex['pred']).strip()
+        lett_is_correct = (lett_target == lett_pred)
         
-        # 보기 좋게 저장할 데이터 레코드 형식
-        # json에 'triple' 정보가 있다면 사용하고, 없다면 query_entity를 사용
-        head = base_ex.get('triple', [base_ex.get('query_entity', 'N/A')])[0]
-        relation = base_ex.get('triple', ['', 'N/A', ''])[1] if 'triple' in base_ex else 'N/A'
+        head = orig_ex.get('triple', [orig_ex.get('query_entity', 'N/A')])[0]
+        relation = orig_ex.get('triple', ['', 'N/A', ''])[1] if 'triple' in orig_ex else 'N/A'
 
         record = {
             "index": i,
             "query_triple": f"({head}, {relation}, ?)",
-            "Ground_Truth_Target": target,
-            "DrKGC_Predicted": base_pred,
-            "Extract_Predicted": ext_pred
+            "Original_Target": orig_target,
+            "Original_Predicted": orig_pred,
+            "Letter_Target": lett_target,
+            "Letter_Predicted": lett_pred
         }
 
-        # 4가지 경우의 수에 따라 분류하여 리스트에 추가
-        if base_is_correct and ext_is_correct:
+        # 4가지 경우의 수 분류 및 중복 텍스트 카운팅
+        if orig_is_correct and lett_is_correct:
             results["1_Common_Correct"].append(record)
-        elif not base_is_correct and not ext_is_correct:
+        elif not orig_is_correct and not lett_is_correct:
             results["2_Common_Wrong"].append(record)
-        elif base_is_correct and not ext_is_correct:
-            results["3_Only_DrKGC_Correct"].append(record)
-        elif not base_is_correct and ext_is_correct:
-            results["4_Only_Extract_Correct"].append(record)
+        elif orig_is_correct and not lett_is_correct:
+            # 🌟 Only Original Correct 케이스: rank_entities 내 정답 텍스트 중복 검사
+            rank_entities = orig_ex.get('rank_entities', [])
+            dup_count = rank_entities.count(orig_target)
+            
+            record["Candidate_Target_String_Count"] = dup_count
+            record["Has_Duplicate_Target_String"] = (dup_count > 1)
+            results["3_Only_Original_Correct"].append(record)
+            
+        elif not orig_is_correct and lett_is_correct:
+            results["4_Only_Letter_Correct"].append(record)
     
-    total_examples = len(baseline_preds)
+    total = len(original_preds)
+    c_correct = len(results["1_Common_Correct"])
+    c_wrong = len(results["2_Common_Wrong"])
+    only_orig = len(results["3_Only_Original_Correct"])
+    only_lett = len(results["4_Only_Letter_Correct"])
+    
+    orig_hits = c_correct + only_orig
+    lett_hits = c_correct + only_lett
+    
+    # 🌟 Only Original Correct 내부의 중복 타겟 텍스트 통계 계산
+    only_orig_dup_count = sum(1 for rec in results["3_Only_Original_Correct"] if rec.get("Has_Duplicate_Target_String", False))
+    only_orig_dup_ratio = (only_orig_dup_count / only_orig * 100) if only_orig > 0 else 0.0
+
     results["Summary"] = {
-        "Total_Test_Examples": total_examples,
-        "Common_Correct_Count": len(results["1_Common_Correct"]),
-        "Common_Wrong_Count": len(results["2_Common_Wrong"]),
-        "Only_DrKGC_Correct_Count": len(results["3_Only_DrKGC_Correct"]),
-        "Only_Extract_Correct_Count": len(results["4_Only_Extract_Correct"]),
+        "Total_Test_Examples": total,
+        "Common_Correct_Count": f"{c_correct} ({c_correct/total*100:.2f}%)",
+        "Common_Wrong_Count": f"{c_wrong} ({c_wrong/total*100:.2f}%)",
+        "Only_Original_Correct_Count": f"{only_orig} ({only_orig/total*100:.2f}%)",
+        "Only_Letter_Correct_Count": f"{only_lett} ({only_lett/total*100:.2f}%)",
         
-        # 두 모델의 최종 Hits@1 (정답 개수)
-        "DrKGC_Total_Hits1": len(results["1_Common_Correct"]) + len(results["3_Only_DrKGC_Correct"]),
-        "Extract_Total_Hits1": len(results["1_Common_Correct"]) + len(results["4_Only_Extract_Correct"])
+        "Original_Total_Hits1": f"{orig_hits} ({orig_hits/total*100:.2f}%)",
+        "Letter_Total_Hits1": f"{lett_hits} ({lett_hits/total*100:.2f}%)",
+        
+        "Analysis_of_Only_Original_Correct": {
+            "Total_Cases": only_orig,
+            "Target_String_Duplicated_in_Candidates": only_orig_dup_count,
+            "Duplication_Ratio": f"{only_orig_dup_ratio:.2f}%"
+        }
     }
 
-    # 콘솔에 깔끔하게 출력
-    print("="*60)
-    print("🎯 Hits@1 (1순위 예측) 정밀 비교 분석 결과")
-    print("="*60)
-    for k, v in results["Summary"].items():
-        print(f" - {k:<30}: {v} 개")
-    print("="*60)
+    # 콘솔 출력 포맷팅
+    print("="*70)
+    print(f"🎯 Hits@1 비교 분석 결과: {baseline_path.split(os.sep)[1].upper()}")
+    print("="*70)
+    print(f" 📊 전체 데이터 수 : {total}")
+    print(f" ▶️ Original 모델 Hits@1 : {orig_hits} ({orig_hits/total*100:.2f}%)")
+    print(f" ▶️ Letter 모델 Hits@1   : {lett_hits} ({lett_hits/total*100:.2f}%)")
+    print("-"*70)
+    print(f" [상세 분류]")
+    print(f"  - 둘 다 맞춤 (Common Correct)       : {c_correct} ({c_correct/total*100:.2f}%)")
+    print(f"  - 둘 다 틀림 (Common Wrong)         : {c_wrong} ({c_wrong/total*100:.2f}%)")
+    print(f"  - Original만 맞춤 (Only Orig)       : {only_orig} ({only_orig/total*100:.2f}%)")
+    print(f"  - Letter만 맞춤 (Only Lett)         : {only_lett} ({only_lett/total*100:.2f}%)")
+    print("-"*70)
+    print(f" 🔍 [Only Original Correct 심층 분석]")
+    print(f"  - 발생 건수: {only_orig}건")
+    print(f"  - 이 중 후보군에 정답 텍스트(string)가 2개 이상 중복된 건수: {only_orig_dup_count}건")
+    print(f"  - 텍스트 중복(동음이의어) 비율: {only_orig_dup_ratio:.2f}%")
+    print("="*70)
     
-    # 📝 핵심 포인트: 추가 실험의 명분 확인
-    print("\n💡 [연구 방향성 진단]")
-    print(f"Extract 모듈이 새롭게 맞춘 문제 (DrKGC는 틀림): {results['Summary']['Only_Extract_Correct_Count']} 개")
-    print(f"Extract 모듈 때문에 틀린 문제 (DrKGC는 맞춤): {results['Summary']['Only_DrKGC_Correct_Count']} 개")
     output_file = os.path.join(output_dir, f'{baseline_path.split(os.sep)[1]}_hits1_comparison_report.json')
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
         
-    print(f"\n상세 분석 리스트가 저장되었습니다: {output_file}")
+    print(f"\n📁 상세 분석 리스트가 저장되었습니다: {output_file}\n")
 
 if __name__ == "__main__":
-    # 파일 경로 설정 (질문자님의 환경에 맞게 수정하세요)
     parser = argparse.ArgumentParser()
     parser.add_argument("--baseline_path", type=str, default="results/fb15k237/llama3/prediction.json")
-    parser.add_argument("--extract_path", type=str, default="results_extract/fb15k237/llama3/prediction.json")
+    parser.add_argument("--extract_path", type=str, default="results_letter/fb15k237/llama3/prediction.json")
     args = parser.parse_args()
-    analyze_errors(args.baseline_path, args.extract_path)
+    
+    datasets = ['wn18rr', 'fb15k237']
+    for dataset in datasets:
+        args.baseline_path = f"results/{dataset}/llama3/prediction.json"
+        args.extract_path = f"results_letter/{dataset}/llama3/prediction.json"
+        
+        print(f"🚀 분석 시작: {dataset}")
+        analyze_errors(args.baseline_path, args.extract_path)

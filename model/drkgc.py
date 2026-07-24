@@ -339,6 +339,8 @@ class DrKGC_align(DrKGC):
     def compute_llm_confidence(self, prompt, candidates, query_ids, entity_ids, subgraph):
         batch_size = len(candidates)
         #breakpoint()
+        if "'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'" in prompt:
+            candidates = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T']
         prompt_ids = [self.tokenizer.bos_token_id] + self.tokenizer.encode(prompt, add_special_tokens=False)
         prompt_len = len(prompt_ids)
         cand_ids_list = [self.tokenizer.encode(cand, add_special_tokens=False) for cand in candidates]
@@ -393,6 +395,8 @@ class DrKGC_align(DrKGC):
     def compute_llm_confidence_greedy(self, prompt, candidates, query_ids, entity_ids, subgraph):
         batch_size = len(candidates)
         #breakpoint()
+        if "'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'" in prompt:
+            candidates = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T']
         prompt_ids = [self.tokenizer.bos_token_id] + self.tokenizer.encode(prompt, add_special_tokens=False)
         prompt_len = len(prompt_ids)
         cand_ids_list = [self.tokenizer.encode(cand, add_special_tokens=False) for cand in candidates]
@@ -512,3 +516,41 @@ class DrKGC_align(DrKGC):
         scores_tensor = torch.tensor(log_scores, dtype=torch.float32, device=entity_ids.device) 
         
         return scores_tensor 
+
+    @torch.no_grad()
+    def compute_llm_confidence_letter(self, prompt, candidates, query_ids, entity_ids, subgraph):
+        # 1. 20개의 객관식 알파벳 고정
+        letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T']
+        #breakpoint()
+        # 각 알파벳에 해당하는 토큰 ID 추출 (토크나이저에서 A~T가 어떤 숫자인지 매핑)
+        cand_token_ids = [self.tokenizer.encode(c, add_special_tokens=False)[0] for c in letters]
+        
+        # 2. 프롬프트를 한 번만 인코딩 (Batch Size = 1)
+        prompt_ids = [self.tokenizer.bos_token_id] + self.tokenizer.encode(prompt, add_special_tokens=False)
+        input_ids = torch.tensor([prompt_ids], dtype=torch.long).cuda()
+        attention_masks = torch.ones_like(input_ids).cuda()
+        
+        # 3. 모델 입력 차원 조절 (Batch Size 1에 맞게 Unsqueeze 적용)
+        # entity_ids는 20개의 [ENTITY] ID를 들고 있으므로 형태를 유지한 채 배치 차원만 추가
+        b_query_ids = query_ids.unsqueeze(0) if query_ids.dim() == 1 else query_ids
+        b_entity_ids = entity_ids.unsqueeze(0) if entity_ids.dim() == 1 else entity_ids
+        b_subgraph = subgraph if subgraph is not None else None
+        
+        # 4. 단 1번의 Forward Pass (연산량 1/20로 감소)
+        inputs_embeds = self._replace_placeholders(input_ids, b_query_ids, b_entity_ids, b_subgraph)
+        outputs = self.llm_model(inputs_embeds=inputs_embeds, attention_mask=attention_masks)
+        
+        # 5. 마지막 토큰(Answer: 직후)의 Logits 추출
+        logits = outputs.logits # 형태: [1, seq_len, vocab_size]
+        next_token_logits = logits[0, -1, :] # 형태: [vocab_size]
+        
+        # Log Softmax로 확률 변환
+        log_probs = F.log_softmax(next_token_logits, dim=-1)
+        
+        # 6. 전체 단어장(vocab_size) 중 A ~ T 토큰의 확률값만 인덱싱하여 추출
+        scores = log_probs[cand_token_ids] # 형태: [20]
+        
+        # 메모리 반환
+        del outputs, logits, log_probs, inputs_embeds, input_ids, attention_masks
+        
+        return scores

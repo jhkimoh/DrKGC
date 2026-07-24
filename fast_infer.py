@@ -142,6 +142,49 @@ class Scorer:
         scores[entity_ids] = cand_scores
         return scores.unsqueeze(0)
 
+    def _score_topk_modify(self, triple_ids, entity_ids, llm_logits, is_predicted_tail, alpha, beta, tau):
+        h, r, t = triple_ids[:,0], triple_ids[:,1], triple_ids[:,2]
+        #breakpoint()
+        # 1. 전체 엔티티에 대한 기본 KGE 점수 계산 (Top 21~ 백업용)
+        rel_emb = self.relation_embedding[r]
+        is_tail = (is_predicted_tail == 'tail')
+        fixed_ent_idx = h if is_tail else t 
+        fixed_ent = self.entity_embedding[fixed_ent_idx]
+        
+        temp = self._get_target_point(fixed_ent, rel_emb, is_tail)
+        base_distances = self._calc_distance(temp.unsqueeze(1), self.entity_embedding.unsqueeze(0))
+        all_kge_scores = -base_distances.squeeze(0) # 높을수록 좋은 점수
+        
+        # 2. Top-20 후보군에 대한 modify_query 점수 계산
+        llm_probs = F.softmax(llm_logits/tau, dim=0)
+        cand_ents = self.entity_embedding[entity_ids]
+        
+        delta = self._calc_distance(temp, cand_ents)
+        
+        if beta == 0.0 and alpha == 0.0:
+            V_i = temp
+        else:
+            Delta = llm_probs # LLM Confidence
+            alpha_i = Delta * torch.exp(-beta * delta)
+            alpha_i = alpha_i.unsqueeze(-1)
+            V_i = temp + alpha_i * (cand_ents - temp)
+            
+        cand_distances = self._calc_distance(V_i, cand_ents)
+        modify_query_scores = -cand_distances # 높을수록 좋은 점수
+        
+        # 3. 엄격한 순위 분리 (Top 1~20: modify_query / Top 21~: KGE)
+        scores = all_kge_scores.clone()
+        max_kge = all_kge_scores.max().item()
+        min_mod = modify_query_scores.min().item()
+        
+        # 🌟 [핵심] modify_query의 20등 점수가 KGE의 1등 점수보다 무조건 높도록 전체 영점 조절 (Shift)
+        shifted_mod_scores = modify_query_scores - min_mod + max_kge + 100.0
+        
+        # 4. 전체 점수판의 후보군 위치에 Shift된 점수를 덮어씌움
+        scores[entity_ids] = shifted_mod_scores
+        
+        return scores.unsqueeze(0)
+
     # Chatgpt 사용
     def _score_candidate_order_kge(self, triple_ids, entity_ids, llm_logits, is_predicted_tail, alpha, beta, tau):
         """
@@ -266,152 +309,6 @@ class Evaluator:
             self.hr2t[(h, r)].add(t)
             self.tr2h[(t, r)].add(h)
     
-    @torch.no_grad()
-    def compute_llm_confidence(self, prompt, candidates, query_ids, entity_ids, subgraph):
-        batch_size = len(candidates)
-        prompt_ids = [self.tokenizer.bos_token_id] + self.tokenizer.encode(prompt, add_special_tokens=False)
-        prompt_len = len(prompt_ids)
-        cand_ids_list = [self.tokenizer.encode(cand, add_special_tokens=False) for cand in candidates]
-        pad_id = self.tokenizer.pad_token_id if self.tokenizer.pad_token_id is not None else self.tokenizer.eos_token_id
-        eos_id = self.tokenizer.eos_token_id
-        scores = []
-        chunk_size = 5
-        all_cand_tokens = []
-        all_cand_probs = []
-        for start_idx in range(0, batch_size, chunk_size):
-            end_idx = min(start_idx+chunk_size, batch_size)
-            chunk_cand_ids = cand_ids_list[start_idx:end_idx]
-            chunk_len = len(chunk_cand_ids)
-            input_ids_batch = []
-            attention_masks_batch = []
-            cand_lengths = []
-            max_seq_len = max([prompt_len+len(c)+1 for c in chunk_cand_ids])
-            for cand_ids in chunk_cand_ids:
-                c_len = len(cand_ids)
-                cand_lengths.append(c_len)
-                seq = prompt_ids + cand_ids + [eos_id]
-                seq_len = len(seq)
-                pad_len = max_seq_len - seq_len
-                padded_seq = seq + [pad_id] * pad_len
-                mask = [1] * seq_len + [0] * pad_len
-                input_ids_batch.append(padded_seq)
-                attention_masks_batch.append(mask)
-            input_ids = torch.tensor(input_ids_batch, dtype=torch.long).cuda()
-            attention_masks = torch.tensor(attention_masks_batch, dtype=torch.long).cuda()
-            b_query_ids = query_ids.repeat(chunk_len) if query_ids.dim() == 1 else query_ids.repeat(chunk_len, 1)
-            b_entity_ids = entity_ids.repeat(chunk_len) if entity_ids.dim() == 1 else entity_ids.repeat(chunk_len, 1)
-            b_subgraph = subgraph * chunk_len if subgraph is not None else None
-            #breakpoint()
-            inputs_embeds = self.model._replace_placeholders(input_ids, b_query_ids, b_entity_ids, b_subgraph)
-            outputs = self.llm_model(inputs_embeds=inputs_embeds, attention_mask=attention_masks)
-            logits = outputs.logits # [20, seq_len, vocab_size]
-            probs = F.softmax(logits, dim=-1)
-            
-            for i in range(chunk_len):
-                c_len = cand_lengths[i]
-                if c_len > 0:
-                    cand_labels = input_ids[i, prompt_len: prompt_len + c_len + 1] # torch.Size([3])
-                    cand_probs_tensor = probs[i, prompt_len-1: prompt_len + c_len]
-                    idx_gpu = torch.arange(len(cand_labels), device=cand_labels.device)
-                    token_probs = cand_probs_tensor[idx_gpu, cand_labels].tolist()
-                    all_cand_tokens.append(cand_labels.tolist())
-                    all_cand_probs.append(token_probs)
-                else:
-                    all_cand_tokens.append([])
-                    all_cand_probs.append([])
-            del outputs, logits, probs, inputs_embeds, input_ids, attention_masks ## OOM 해결 
-        
-        num_cands = len(all_cand_tokens)
-        final_scores_dict = {i: 0.0 for i in range(num_cands)}
-        def calculate_sub_cumulative(indices, depth):
-            # 현재 depth에 토큰이 남아있는 후보만 필터링
-            valid_indices = [i for i in indices if depth < len(all_cand_tokens[i])]
-            if not valid_indices:
-                return {i:0.0 for i in indices}
-            # 토큰 기준으로 그룹화
-            groups = {}
-            for i in valid_indices:
-                tok = all_cand_tokens[i][depth]
-                if tok not in groups:
-                    groups[tok] = []
-                groups[tok].append(i)
-                
-            # 확률 오름차순 정렬
-            group_list = []
-            for tok, idxs in groups.items():
-                prob = all_cand_probs[idxs[0]][depth]
-                group_list.append((prob, idxs))
-            group_list.sort(key=lambda x: x[0])
-            
-            res = {i: 0.0 for i in indices}
-            smaller_sum = 0.0
-            for prob, idxs in group_list:
-                if len(idxs) == 1:
-                    res[idxs[0]] = smaller_sum + prob
-                else:
-                    sub_cum = calculate_sub_cumulative(idxs, depth + 1)
-                    for i in idxs:
-                        res[i] = smaller_sum + prob * sub_cum[i]
-                smaller_sum += prob
-                    
-            return res
-
-        # Depth 0 그룹화
-        groups_d0 = {}
-        for i in range(num_cands):
-            if len(all_cand_tokens[i]) > 0:
-                tok = all_cand_tokens[i][0]
-                if tok not in groups_d0:
-                    groups_d0[tok] = []
-                groups_d0[tok].append(i)
-                
-        group_list_d0 = []
-        for tok, idxs in groups_d0.items():
-            prob = all_cand_probs[idxs[0]][0]
-            group_list_d0.append((prob, idxs))
-        group_list_d0.sort(key=lambda x: x[0])
-
-        prev_prob = 0.0
-        for prob, idxs in group_list_d0:
-            if len(idxs) == 1: # 🚀 첫 번째 토큰이 유니크하면 재귀 안 타고 즉시 확정 (속도 향상 및 깔끔함)
-                final_scores_dict[idxs[0]] = prob
-            else: # 겹치는 토큰들만 서브 누적 확률 계산 태우기
-                sub_cum = calculate_sub_cumulative(idxs, 1)
-                for i in idxs:
-                    final_scores_dict[i] = prev_prob + sub_cum[i] * (prob - prev_prob)
-            prev_prob = prob
-
-        # 3. 외부 Scorer 연동용 Log 변환 및 반환
-        log_scores = [math.log(max(final_scores_dict.get(i, 0.0), 1e-300)) for i in range(num_cands)]
-        scores_tensor = torch.tensor(log_scores, dtype=torch.float32, device=entity_ids.device) 
-        
-        return scores_tensor
-
-    @torch.no_grad()
-    def save_llm_confidence(self, file_name):
-        #breakpoint()
-        self.model.eval()
-        confidence_cache = {}
-        for ex_idx, ex in enumerate(tqdm(self.dataset)):
-            h, r, t = ex['triple_id']
-            pred_type = ex.get('type').split('_')[-1] # 'head' | 'tail'
-            query_id = h if pred_type=='tail' else t
-            subgraph = [ex['subgraph']] if 'subgraph' in ex else None
-            llm_conf_probs = self.compute_llm_confidence( 
-                prompt=ex['input'], 
-                candidates=ex['rank_entities'], 
-                query_ids=torch.LongTensor([ex['query_entity_id']]).cuda(), 
-                entity_ids=torch.LongTensor([ex['rank_entities_id']]).cuda(), 
-                subgraph=subgraph, 
-                # query_ids=torch.LongTensor([query_id]).cuda(), 
-                # entity_ids=torch.LongTensor([ex['topk_id']]).cuda() 
-            )
-            query_key = f"{ex_idx}_{h}_{r}_{t}_{pred_type}"
-            confidence_cache[query_key] = llm_conf_probs.cpu()
-        save_path = os.path.join(self.output_dir, file_name)
-        torch.save(confidence_cache, save_path)
-        print(f"\n✅ [성공] LLM Confidence 캐시가 다음 경로에 저장되었습니다: {save_path}")
-
     def compare_greedy_vs_global(self):
         print("\n🔍 [분석] Global Score 1등 vs 실제 Greedy Decoding 예측 1등 비교 시작...")
         match_count = 0
@@ -427,6 +324,11 @@ class Evaluator:
         tau = 1.0
         prediction_json_path = os.path.join(self.output_dir, 'prediction.json')
         print(f"📦 Greedy Decoding 결과가 담긴 JSON을 로드합니다: {prediction_json_path}")
+        
+        if not os.path.exists(prediction_json_path):
+            print(f"❌ Error: {prediction_json_path} 파일이 없습니다!")
+            return
+            
         with open(prediction_json_path, 'r', encoding='utf-8') as f:
             pred_data = json.load(f).get("prediction", [])
             
@@ -434,17 +336,18 @@ class Evaluator:
             print(f"⚠️ 경고: prediction.json의 데이터 개수({len(pred_data)})와 test.json의 데이터 개수({len(self.dataset)})가 다릅니다!")
 
         comparison_results = []
+        special_cases = [] # 🌟 특이 케이스(동음이의어 매칭 등)를 수집할 리스트
+
         for ex_idx, ex in enumerate(tqdm(self.dataset, desc="비교 중")):
             h, r, t = ex['triple_id']
             pred_type = ex.get('type').split('_')[-1]
             query_key = f"{ex_idx}_{h}_{r}_{t}_{pred_type}"
             
             # =================================================================
-            # 1. Global Score 기준 1등 찾기 (ranking_metrics와 100% 동일한 로직)
+            # 1. Global Score 기준 1등 찾기
             # =================================================================
             llm_logits = self.llm_logits_cache[query_key]
             
-            # 단순 argmax가 아니라 scorer를 태워서 점수화
             output = self.scorer.calculate_scores(
                 triple_ids=torch.LongTensor([ex['triplet_id']]).cuda(), 
                 entity_ids=torch.LongTensor([ex['topk_id']]).cuda(), 
@@ -452,50 +355,56 @@ class Evaluator:
                 is_predicted_tail=pred_type, 
                 alpha=alpha, beta=beta, tau=tau
             )
-            #breakpoint()
+            
             h, r, t = ex['triplet_id']
             target_id = t if pred_type == 'tail' else h
-            target_str = ex['output'] # 조작 없는 원본 정답 문자열
+            target_str = ex['output'] # 🌟 정답 텍스트
             
-            # Filtered 세팅 적용 (타겟 이외의 맞는 정답지 페널티)
+            # Filtered 세팅 적용
             target_score = output[0, target_id].clone()
             if pred_type == 'tail':
                 true_tails = self.hr2t.get((h, r), set())
                 for true_t in true_tails:
                     if true_t != t:
-                        output[0, true_t] = target_score - 1.0
+                        output[0, true_t] = float('-inf') 
             else:
                 true_heads = self.tr2h.get((t, r), set())
                 for true_h in true_heads:
                     if true_h != h:
-                        output[0, true_h] = target_score - 1.0
+                        output[0, true_h] = float('-inf') 
             
-            # 필터링이 모두 끝난 후의 "진짜" 1등 엔티티 ID 추출
             global_top1_id = torch.argmax(output[0, :]).item()
             
-            # WN18RR 숫자 ID 대신 자연어 텍스트 가져오기
+            # =================================================================
+            # 🌟 [추가] 20개 후보군 텍스트, ID, LLM Score 정리
+            # =================================================================
             cand_ids = ex['topk_id']
+            cand_texts = ex['rank_entities']
+            cand_scores_list = llm_logits.tolist() # LLM이 부여한 Raw Score 리스트
+            
+            candidates_with_scores = []
+            for c_text, c_id, c_score in zip(cand_texts, cand_ids, cand_scores_list):
+                # 점수와 함께 "텍스트 (ID: 1234) -> Score: -2.345" 형태로 저장
+                candidates_with_scores.append(f"'{c_text}' (ID: {c_id}) -> Score: {c_score:.4f}")
+
+            # 1등 텍스트 복원
             if global_top1_id in cand_ids:
                 idx = cand_ids.index(global_top1_id)
                 best_global_str = ex['rank_entities'][idx]
             else:
-                if global_top1_id == target_id:
-                    best_global_str = target_str
-                else:
-                    best_global_str = f"[Non-Candidate ID: {global_top1_id}]"
+                best_global_str = self.kge_id2entity.get(global_top1_id, f"[Non-Candidate ID: {global_top1_id}]")
             
             global_is_correct_id = (global_top1_id == target_id)
             global_is_correct_text = (best_global_str == target_str)
             
             # =================================================================
-            # 2. JSON에서 실제 LLM Greedy Decoding 결과 즉시 불러오기
+            # 2. Greedy Decoding 결과 매칭
             # =================================================================
-            # LLM을 돌리지 않고 미리 생성된 json의 'pred' 항목을 사용합니다.
             greedy_str = pred_data[ex_idx]['pred'].strip()
             greedy_is_correct_text = (greedy_str == target_str)
             
             # =================================================================
-            # 3. 통계 집계 및 출력
+            # 3. 통계 집계 및 특이 케이스 기록
             # =================================================================
             is_match = (best_global_str == greedy_str)
             
@@ -509,24 +418,32 @@ class Evaluator:
                 total_greedy_correct_text += 1
             total_count += 1
             
-            comparison_results.append({
+            result_dict = {
                 "ex_idx": ex_idx,
                 "triplet_id": [h, r, t],
                 "pred_type": pred_type,
-                "target_entity": target_str,
-                "global_score_top1": best_global_str,
+                "target_entity_text": target_str,
+                "target_entity_id": target_id,         # 🌟 진짜 정답 ID 확인용
+                "global_score_top1_text": best_global_str,
+                "global_score_top1_id": global_top1_id, # 🌟 모델이 예측한 1등 ID 확인용
                 "greedy_decoding_top1": greedy_str,
                 "is_match": is_match,
                 "global_correct_id": global_is_correct_id,
                 "global_correct_text": global_is_correct_text,
-                "greedy_correct_text": greedy_is_correct_text
-            })
+                "greedy_correct_text": greedy_is_correct_text,
+                "candidates_with_scores": candidates_with_scores # 🌟 20개 후보군 점수 낱낱이 공개
+            }
+            comparison_results.append(result_dict)
+
+            # 특이 케이스 캡처
+            if not global_is_correct_id and global_is_correct_text:
+                special_cases.append(result_dict)
 
             if ex_idx < 5:
                 print(f"\n[Sample {ex_idx+1}]")
-                print(f" - 정답(Target): '{target_str}'")
-                print(f" - 🥇 Global : '{best_global_str}' (ID정답: {global_is_correct_id} | Text정답: {global_is_correct_text})")
-                print(f" - 🤖 Greedy : '{greedy_str}' (Text정답: {greedy_is_correct_text})")
+                print(f" - 정답(Target): '{target_str}' (ID: {target_id})")
+                print(f" - 🥇 Global : '{best_global_str}' (예측 ID: {global_top1_id} | ID정답: {global_is_correct_id} | 텍스트정답: {global_is_correct_text})")
+                print(f" - 🤖 Greedy : '{greedy_str}' (텍스트정답: {greedy_is_correct_text})")
                 
         # 🌟 결과 계산
         match_rate = (match_count / total_count) * 100
@@ -535,12 +452,13 @@ class Evaluator:
         greedy_hits1_text = (total_greedy_correct_text / total_count) * 100
         
         print("\n" + "="*60)
-        print(f"📊 [초고속 채점 일치화 결과 확인 (JSON 로드)]")
+        print(f"📊 [초고속 채점 일치화 결과 확인]")
         print("="*60)
-        print(f"▶️ 전체 Global Score HITS@1 (ID 기준 엄격)  : {global_hits1_id:.2f}%")
-        print(f"▶️ 전체 Global Score HITS@1 (Text 기준)     : {global_hits1_text:.2f}% 🔥")
-        print(f"▶️ 전체 Greedy Decoding HITS@1 (JSON 기준)  : {greedy_hits1_text:.2f}%")
-        print(f"▶️ 두 방식 간의 완벽 일치율 (Match Rate)    : {match_rate:.2f}%")
+        print(f"▶️ 전체 Global Score HITS@1 (ID 기준 엄격)   : {global_hits1_id:.2f}%")
+        print(f"▶️ 전체 Global Score HITS@1 (Text 기준)      : {global_hits1_text:.2f}% 🔥")
+        print(f"▶️ 전체 Greedy Decoding HITS@1 (JSON Text)   : {greedy_hits1_text:.2f}%")
+        print(f"▶️ 두 방식 간의 예측 일치율 (Match Rate)     : {match_rate:.2f}%")
+        print(f"⚠️ [특이 케이스] ID는 틀렸지만 Text는 맞춘 횟수: {len(special_cases)}건")
         print("="*60)
         
         save_filename = f'greedy_vs_global_analysis_{self.args.kge_model_name}.json'
@@ -554,32 +472,18 @@ class Evaluator:
                 "global_hits1_id": round(global_hits1_id, 2),
                 "global_hits1_text": round(global_hits1_text, 2),
                 "greedy_hits1_text": round(greedy_hits1_text, 2),
+                "special_case_count": len(special_cases),
                 "kge_model": self.args.kge_model_name,
             },
+            "special_cases_captured": special_cases,
             "details": comparison_results
         }
         
         with open(save_path, 'w', encoding='utf-8') as f:
             json.dump(output_data, f, ensure_ascii=False, indent=4)
             
-        print(f"📁 상세 비교 분석 결과 및 정답 여부가 JSON으로 안전하게 저장되었습니다: {save_path}")
+        print(f"📁 상세 비교 분석 결과 및 특이 케이스가 JSON으로 안전하게 저장되었습니다: {save_path}")
         
-    
-    def _apply_length_penalty(self, llm_logits, candidates, strategy="mean_length"):
-        adjusted_logits = llm_logits.clone()
-        lengths = []
-        for cand in candidates:
-            tokens = self.tokenizer.encode(cand, add_special_tokens=False)
-            lengths.append(max(1, len(tokens)))
-        for i,L in enumerate(lengths):
-            if strategy == "log_length":
-                penalty = math.log2(1+L)
-            elif strategy == "mean_length":
-                penalty = L
-            else:
-                raise ValueError("Not implemented length penalty strategy")
-            adjusted_logits[i] = adjusted_logits[i] / penalty
-        return adjusted_logits
 
     def ranking_metrics(self, alpha_beta, tau):
         logs = []
@@ -591,8 +495,6 @@ class Evaluator:
             pred_type = ex.get('type').split('_')[-1] # 'head' | 'tail'
             query_key = f"{ex_idx}_{h}_{r}_{t}_{pred_type}"
             llm_logits = self.llm_logits_cache[query_key]
-            if self.args.divide_length:
-                llm_logits = self._apply_length_penalty(llm_logits=llm_logits, candidates=ex['rank_entities'])
             output = self.scorer.calculate_scores(
                 triple_ids=torch.LongTensor([ex['triplet_id']]).cuda() , 
                 entity_ids=torch.LongTensor([ex['topk_id']]).cuda(), 
@@ -604,6 +506,8 @@ class Evaluator:
             )
             h, r, t = ex['triplet_id']
             target_id = t if pred_type == 'tail' else h
+            target_str = ex['triple'][2] if pred_type == 'tail' else ex['triple'][0]
+            #target_str = ex['output']
             target_score = output[0, target_id].clone()
             if pred_type == 'tail':
                 true_tails = self.hr2t.get((h, r), set())
@@ -619,12 +523,23 @@ class Evaluator:
             ranking_tensor = (argsort[0, :] == target_id).nonzero()
             assert ranking_tensor.size(0) == 1
             ranking = 1 + ranking_tensor.item()
+
+            top1_id = argsort[0, 0].item() # 점수가 가장 높은 1등 ID 추출
+            cand_ids = ex['topk_id']
+            if top1_id in cand_ids:
+                idx = cand_ids.index(top1_id)
+                best_str = ex['rank_entities'][idx]
+            else:
+                best_str = target_str if top1_id == target_id else f"[Non-Candidate ID: {top1_id}]"
+            hits1_str = 1.0 if best_str == target_str else 0.0
+
             logs.append({
                     'MRR': 1.0 / ranking,
                     'MR': float(ranking),
                     'HITS@1': 1.0 if ranking <= 1 else 0.0,
                     'HITS@3': 1.0 if ranking <= 3 else 0.0,
                     'HITS@10': 1.0 if ranking <= 10 else 0.0,
+                    'HITS@1_STR': hits1_str,
                 })
         metrics = {}
         if len(logs) > 0:
@@ -633,7 +548,7 @@ class Evaluator:
         metrics = {k: round(v, 8) for k, v in metrics.items()}
         metrics = {
             'mrr': metrics['MRR'], 'mr': metrics['MR'],
-            'hits1': metrics['HITS@1'], 'hits3': metrics['HITS@3'], 'hits10': metrics['HITS@10']
+            'hits1': metrics['HITS@1'], 'hits3': metrics['HITS@3'], 'hits10': metrics['HITS@10'], 'hits1_str': metrics['HITS@1_STR']
         }
         print(f"\n[{datetime.now()} {self.args.data_path}, {self.args.kge_model_name}, {self.args.score_strategy} | Alpha={alpha}, Beta={beta}, Tau={tau}] \n {metrics}")
         
@@ -716,8 +631,6 @@ def run_parallel_experiments(args):
                 cmd.extend(["--kge_embedding_path", kge_embedding_path])
                 cmd.extend(["--checkpoint_dir", checkpoint_dir])
 
-            if args.divide_length:
-                cmd.append("--divide_length")
 
             # 리스트를 띄어쓰기로 연결하여 하나의 문자열 명령어로 만듦
             cmd_str = " ".join(cmd)
@@ -757,7 +670,6 @@ def main():
     parser.add_argument("--checkpoint_dir", type=str, default=None, help="DrKGC Graph Enhancer 체크포인트")
     parser.add_argument("--kge_embedding_path", type=str, default=None, help="사전학습된 KGE 임베딩 pt 파일")
 
-    parser.add_argument("--divide_length", action="store_true", help="llm_logits를 length로 나눠줄지 여부")
 
     args = parser.parse_args()
     #breakpoint()
@@ -770,11 +682,6 @@ def main():
     evaluator = Evaluator(args)
     #evaluator.compare_greedy_vs_global() ## debugging 
     #return ## debugging
-    if args.use_llm:
-        dataset_name_prefix = os.path.basename(args.test_json_path)[:2]
-        cache_file_name = f"{dataset_name_prefix}_logits_fractal.pt"
-        with autocast():
-            evaluator.save_llm_confidence(cache_file_name)
         
     alpha_beta_list = [{"alpha": 0.0, "beta": 0.0}]
     beta_list = [0.001, 0.01, 0.05, 0.1]

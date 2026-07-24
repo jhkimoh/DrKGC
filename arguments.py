@@ -50,6 +50,7 @@ class Arguments:
     llm_confidence: bool = field(default=False) ## infer.py에서 llm confidence 방식 사용 여부 
     exp_output_dir: str = field(default=None) ## llm_confidence True 일때 사용하는 output 저장 dir 
     tau: float = field(default=1.0) ## llm confidence 에서 softmax(logit/tau) 해줄거임 
+    save_pt: bool = field(default=False)
 
 @dataclass
 class FinetuningArguments(Seq2SeqTrainingArguments):
